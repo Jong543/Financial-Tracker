@@ -152,7 +152,7 @@
   <div class="fixed bottom-6 right-6 z-45">
     <button onclick="toggleAiPopup()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-2xl flex items-center space-x-2 transition transform hover:scale-105">
       <i class="fa-solid fa-robot text-xl"></i>
-      <span class="text-sm font-bold pr-1">Gemini AI Advisor</span>
+      <span class="text-sm font-bold pr-1">ChatGPT AI Advisor</span>
     </button>
   </div>
 
@@ -174,7 +174,7 @@
       </div>
     </div>
     <div class="p-3 border-t border-slate-200 dark:border-slate-700 flex space-x-2 bg-slate-50 dark:bg-slate-900/50 rounded-b-2xl">
-      <input type="text" id="popupChatInput" placeholder="Magtanong kay Gemini..." onkeypress="if(event.key === 'Enter') sendPopupAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <input type="text" id="popupChatInput" placeholder="Magtanong kay ChatGPT..." onkeypress="if(event.key === 'Enter') sendPopupAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       <button onclick="sendPopupAI()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-sm transition"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
   </div>
@@ -209,7 +209,7 @@
             </div>
           </div>
           <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex space-x-2 bg-slate-50 dark:bg-slate-900">
-            <input type="text" id="splitChatInput" placeholder="Mag-type ng mensahe o tanong kay Gemini..." onkeypress="if(event.key === 'Enter') sendSplitAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="splitChatInput" placeholder="Mag-type ng mensahe o tanong kay ChatGPT..." onkeypress="if(event.key === 'Enter') sendSplitAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <button onclick="sendSplitAI()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send</button>
           </div>
         </div>
@@ -261,10 +261,10 @@
           
           <div class="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 p-5 rounded-2xl space-y-2">
             <h4 class="font-bold text-xs uppercase text-indigo-600 dark:text-indigo-400 flex items-center space-x-2">
-              <i class="fa-solid fa-lightbulb"></i><span>Gemini Strategic Advice</span>
+              <i class="fa-solid fa-lightbulb"></i><span>ChatGPT Strategic Advice</span>
             </h4>
             <p id="aiStrategicAdviceText" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Mag-log ng mga bagong transaksyon o utang upang makapagbigay si Gemini ng customized na pag-analisa sa iyong cashflow.
+              Mag-log ng mga bagong transaksyon o utang upang makapagbigay si ChatGPT ng customized na pag-analisa sa iyong cashflow.
             </p>
           </div>
 
@@ -352,67 +352,275 @@
   </div>
 
   <script>
-    let globalData = { transactions: [], debts: [], user: { email: '', isAdmin: false } };
+    let globalData = {
+      transactions: [],
+      debts: [],
+      user: { email: '', isAdmin: false }
+    };
+
+    
+    
+    
+    
+    
+    
+    let aiConversationHistory = [];
+    let aiIsBusy = false;
+
+    const MAX_AI_HISTORY = 20;
+    const AI_STORAGE_KEY =
+      'finance_tracker_ai_conversation_v3';
 
     window.onload = function() {
       document.getElementById('txDate').valueAsDate = new Date();
+
+      restoreAiConversation();
+      syncAiConversations();
+
       loadData();
     };
 
-    function loadData() {
-      document.getElementById('refreshIcon').classList.add('animate-spin');
-      google.script.run.withSuccessHandler(res => {
-        globalData = res;
-        renderDashboard(res);
-        document.getElementById('refreshIcon').classList.remove('animate-spin');
-      }).getSheetData();
+    function loadData(callback) {
+
+      const refreshIcon =
+        document.getElementById('refreshIcon');
+
+      if (refreshIcon) {
+        refreshIcon.classList.add('animate-spin');
+      }
+
+      google.script.run
+
+        .withSuccessHandler(res => {
+
+          globalData =
+            res || {
+              transactions: [],
+              debts: [],
+              user: {
+                email: '',
+                isAdmin: false
+              }
+            };
+
+          renderDashboard(globalData);
+
+          if (refreshIcon) {
+            refreshIcon.classList.remove('animate-spin');
+          }
+
+          if (typeof callback === 'function') {
+            callback(globalData);
+          }
+        })
+
+        .withFailureHandler(err => {
+
+          if (refreshIcon) {
+            refreshIcon.classList.remove('animate-spin');
+          }
+
+          console.error(
+            'loadData error:',
+            err
+          );
+
+          alert(
+            'Hindi ma-load ang Finance Tracker data.\n\n' +
+            (
+              err &&
+              err.message
+                ? err.message
+                : 'Unknown server error.'
+            )
+          );
+
+          if (typeof callback === 'function') {
+            callback(null, err);
+          }
+        })
+
+        .getSheetData();
     }
 
-    function renderDashboard({ transactions, debts, user }) {
+    function renderDashboard({
+      transactions = [],
+      debts = [],
+      user = {}
+    }) {
+
       if (user && user.email) {
-        document.getElementById('userEmailTag').textContent = user.email + (user.isAdmin ? " (Admin)" : "");
+
+        document.getElementById(
+          'userEmailTag'
+        ).textContent =
+          user.email +
+          (user.isAdmin ? " (Admin)" : "");
+
         if (user.isAdmin) {
-          document.getElementById('adminGitHubPanel').classList.remove('hidden');
+          document.getElementById(
+            'adminGitHubPanel'
+          ).classList.remove('hidden');
         } else {
-          document.getElementById('adminGitHubPanel').classList.add('hidden');
+          document.getElementById(
+            'adminGitHubPanel'
+          ).classList.add('hidden');
         }
       }
 
-      let income = 0, expenses = 0, savings = 0, totalDebtAmount = 0, totalInitialDebt = 0;
-      
+      let income = 0;
+      let expenses = 0;
+      let savings = 0;
+      let totalDebtAmount = 0;
+
       transactions.forEach(tx => {
-        const amt = Number(tx.amount);
-        if (tx.type === 'income') income += amt;
-        else if (tx.type === 'expense') expenses += amt;
-        else if (tx.type === 'savings') savings += amt;
+
+        const amt =
+          Number(tx.amount) || 0;
+
+        if (tx.type === 'income') {
+          income += amt;
+
+        } else if (tx.type === 'expense') {
+          expenses += amt;
+
+        } else if (tx.type === 'savings') {
+          savings += amt;
+        }
       });
 
-      debts.forEach(d => { 
-        totalDebtAmount += Number(d.remainingAmount); 
-        totalInitialDebt += Number(d.initialAmount);
+      debts.forEach(debt => {
+        totalDebtAmount +=
+          Number(debt.remainingAmount) || 0;
       });
 
-      document.getElementById('totalIncome').textContent = formatCurrency(income);
-      document.getElementById('totalExpenses').textContent = formatCurrency(expenses);
-      document.getElementById('totalSavings').textContent = formatCurrency(savings);
-      document.getElementById('totalDebts').textContent = formatCurrency(totalDebtAmount);
+      const debtProgress =
+        calculateDebtProgress(debts);
 
-      const debtProgress = totalInitialDebt > 0 ? Math.min(Math.max(((totalInitialDebt - totalDebtAmount) / totalInitialDebt) * 100, 0), 100) : 0;
-      document.getElementById('debtBar').style.width = debtProgress + '%';
+      document.getElementById(
+        'totalIncome'
+      ).textContent =
+        formatCurrency(income);
 
-      const netCash = income - expenses;
-      document.getElementById('splitNetCash').textContent = formatCurrency(netCash);
-      document.getElementById('splitDebtProgressText').textContent = Math.round(debtProgress) + '% Paid';
-      
-      const incomeRatio = income > 0 ? Math.min(Math.round((expenses / income) * 100), 100) : 0;
-      document.getElementById('incomeRatioVal').textContent = incomeRatio + '%';
-      document.getElementById('incomeBarGraph').style.width = incomeRatio + '%';
+      document.getElementById(
+        'totalExpenses'
+      ).textContent =
+        formatCurrency(expenses);
 
-      const debtRatio = income > 0 ? Math.min(Math.round((totalDebtAmount / income) * 100), 100) : 0;
-      document.getElementById('debtRatioVal').textContent = debtRatio + '%';
-      document.getElementById('debtRatioBar').style.width = debtRatio + '%';
+      document.getElementById(
+        'totalSavings'
+      ).textContent =
+        formatCurrency(savings);
+
+      document.getElementById(
+        'totalDebts'
+      ).textContent =
+        formatCurrency(totalDebtAmount);
+
+      document.getElementById(
+        'debtBar'
+      ).style.width =
+        debtProgress + '%';
+
+      const netCash =
+        income - expenses;
+
+      document.getElementById(
+        'splitNetCash'
+      ).textContent =
+        formatCurrency(netCash);
+
+      document.getElementById(
+        'splitDebtProgressText'
+      ).textContent =
+        Math.round(debtProgress) +
+        '% Paid';
+
+      const incomeRatio =
+        income > 0
+          ? Math.min(
+              Math.round(
+                (expenses / income) * 100
+              ),
+              100
+            )
+          : 0;
+
+      document.getElementById(
+        'incomeRatioVal'
+      ).textContent =
+        incomeRatio + '%';
+
+      document.getElementById(
+        'incomeBarGraph'
+      ).style.width =
+        incomeRatio + '%';
+
+      const debtRatio =
+        income > 0
+          ? Math.min(
+              Math.round(
+                (totalDebtAmount / income) * 100
+              ),
+              100
+            )
+          : 0;
+
+      document.getElementById(
+        'debtRatioVal'
+      ).textContent =
+        debtRatio + '%';
+
+      document.getElementById(
+        'debtRatioBar'
+      ).style.width =
+        debtRatio + '%';
 
       renderTable(transactions);
+
+      
+      const debtModal =
+        document.getElementById('debtModal');
+
+      if (
+        debtModal &&
+        !debtModal.classList.contains('hidden')
+      ) {
+        renderDebtList();
+      }
+    }
+
+    
+    
+    
+    function calculateDebtProgress(debts = []) {
+
+      let totalInitial = 0;
+      let totalRemaining = 0;
+
+      debts.forEach(debt => {
+
+        totalInitial +=
+          Number(debt.initialAmount) || 0;
+
+        totalRemaining +=
+          Number(debt.remainingAmount) || 0;
+      });
+
+      if (totalInitial <= 0) {
+        return 0;
+      }
+
+      return Math.min(
+        Math.max(
+          (
+            (totalInitial - totalRemaining) /
+            totalInitial
+          ) * 100,
+          0
+        ),
+        100
+      );
     }
 
     function renderTable(transactions) {
@@ -438,72 +646,507 @@
     }
 
     function toggleAiPopup() {
-      document.getElementById('aiPopupModal').classList.toggle('hidden');
+
+      const popup =
+        document.getElementById(
+          'aiPopupModal'
+        );
+
+      popup.classList.toggle(
+        'hidden'
+      );
+
+      if (!popup.classList.contains('hidden')) {
+
+        syncAiConversations();
+
+        setTimeout(() => {
+          const input =
+            document.getElementById(
+              'popupChatInput'
+            );
+
+          if (input) {
+            input.focus();
+          }
+        }, 50);
+      }
     }
 
+    // ==========================================================
+    
+    
     function openSplitScreenAI() {
-      document.getElementById('aiPopupModal').classList.add('hidden');
-      document.getElementById('splitAiModal').classList.remove('hidden');
+
+      document.getElementById(
+        'aiPopupModal'
+      ).classList.add('hidden');
+
+      document.getElementById(
+        'splitAiModal'
+      ).classList.remove('hidden');
+
+      
+      syncAiConversations();
+
+      
+      renderDashboard(globalData);
+
       getInitialAiAdvice();
+
+      setTimeout(() => {
+
+        const container =
+          document.getElementById(
+            'splitChatMessages'
+          );
+
+        if (container) {
+          container.scrollTop =
+            container.scrollHeight;
+        }
+
+        const input =
+          document.getElementById(
+            'splitChatInput'
+          );
+
+        if (input) {
+          input.focus();
+        }
+
+      }, 50);
     }
 
+    
+    
+    
     function closeSplitScreenAI() {
-      document.getElementById('splitAiModal').classList.add('hidden');
+
+      saveAiConversation();
+
+      document.getElementById(
+        'splitAiModal'
+      ).classList.add('hidden');
+
+      document.getElementById(
+        'aiPopupModal'
+      ).classList.remove('hidden');
+
+      syncAiConversations();
+
+      setTimeout(() => {
+
+        const container =
+          document.getElementById(
+            'popupChatMessages'
+          );
+
+        if (container) {
+          container.scrollTop =
+            container.scrollHeight;
+        }
+
+        const input =
+          document.getElementById(
+            'popupChatInput'
+          );
+
+        if (input) {
+          input.focus();
+        }
+
+      }, 50);
     }
 
+    
+    
+    
+    function restoreAiConversation() {
+
+      try {
+
+        const saved =
+          localStorage.getItem(
+            AI_STORAGE_KEY
+          );
+
+        if (!saved) {
+          aiConversationHistory = [];
+          return;
+        }
+
+        const parsed =
+          JSON.parse(saved);
+
+        if (!Array.isArray(parsed)) {
+          aiConversationHistory = [];
+          return;
+        }
+
+        aiConversationHistory =
+          parsed
+            .filter(message =>
+              message &&
+              (
+                message.role === 'user' ||
+                message.role === 'assistant'
+              ) &&
+              message.text
+            )
+            .slice(-MAX_AI_HISTORY);
+
+      } catch (e) {
+
+        console.warn(
+          'Unable to restore AI conversation:',
+          e
+        );
+
+        aiConversationHistory = [];
+      }
+    }
+
+    function saveAiConversation() {
+
+      try {
+
+        localStorage.setItem(
+          AI_STORAGE_KEY,
+          JSON.stringify(
+            aiConversationHistory.slice(
+              -MAX_AI_HISTORY
+            )
+          )
+        );
+
+      } catch (e) {
+
+        console.warn(
+          'Unable to save AI conversation:',
+          e
+        );
+      }
+    }
+
+    
+    
+    
+    function addAiMessage(
+      role,
+      text
+    ) {
+
+      aiConversationHistory.push({
+        role: role,
+        text: String(text)
+      });
+
+      if (
+        aiConversationHistory.length >
+        MAX_AI_HISTORY
+      ) {
+
+        aiConversationHistory =
+          aiConversationHistory.slice(
+            -MAX_AI_HISTORY
+          );
+      }
+
+      saveAiConversation();
+    }
+
+    function renderConversationToContainer(
+      container
+    ) {
+
+      if (!container) {
+        return;
+      }
+
+      container.innerHTML = '';
+
+      if (
+        aiConversationHistory.length === 0
+      ) {
+
+        container.innerHTML = `
+          <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 max-w-[85%]">
+            Hello John Ray! Nandito ako sa iyong AI Financial Assistant. Magtanong ka tungkol sa budget, expenses, savings, cashflow, o debts mo.
+          </div>
+        `;
+
+      } else {
+
+        aiConversationHistory.forEach(
+          message => {
+
+            if (
+              message.role === 'user'
+            ) {
+
+              container.innerHTML += `
+                <div class="bg-indigo-50 dark:bg-indigo-950 p-3 rounded-2xl ml-auto max-w-[85%] text-slate-800 dark:text-slate-200">
+                  <b>Ikaw:</b><br>
+                  ${escapeHtml(message.text)}
+                </div>
+              `;
+
+            } else {
+
+              container.innerHTML += `
+                <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 space-y-1 max-w-[90%]">
+                  <b>Gemini AI:</b><br>
+                  ${formatAiText(message.text)}
+                </div>
+              `;
+            }
+          }
+        );
+      }
+
+      container.scrollTop =
+        container.scrollHeight;
+    }
+
+    function syncAiConversations() {
+
+      renderConversationToContainer(
+        document.getElementById(
+          'popupChatMessages'
+        )
+      );
+
+      renderConversationToContainer(
+        document.getElementById(
+          'splitChatMessages'
+        )
+      );
+    }
+
+    // ==========================================================
+    
+    
     function sendPopupAI() {
-      const input = document.getElementById('popupChatInput');
-      const container = document.getElementById('popupChatMessages');
-      const prompt = input.value.trim();
-      if (!prompt) return;
-
-      container.innerHTML += `<div class="bg-indigo-50 dark:bg-indigo-950 p-2.5 rounded-xl ml-auto max-w-[85%] text-slate-800 dark:text-slate-200"><b>Ikaw:</b> ${escapeHtml(prompt)}</div>`;
-      input.value = '';
-      container.scrollTop = container.scrollHeight;
-
-      const loadId = "load_" + Date.now();
-      container.innerHTML += `<div id="${loadId}" class="bg-slate-100 dark:bg-slate-900 p-2.5 rounded-xl text-slate-400 italic">Nag-iisip si Gemini...</div>`;
-      container.scrollTop = container.scrollHeight;
-
-      google.script.run
-        .withSuccessHandler(res => {
-          document.getElementById(loadId).remove();
-          container.innerHTML += `<div class="bg-slate-100 dark:bg-slate-900 p-2.5 rounded-xl text-slate-700 dark:text-slate-300 space-y-1"><b>Gemini:</b><br>${formatAiText(res)}</div>`;
-          container.scrollTop = container.scrollHeight;
-        })
-        .askGeminiAI(prompt, globalData);
+      sendAiMessage('popup');
     }
 
+    
+    
+    
     function sendSplitAI() {
-      const input = document.getElementById('splitChatInput');
-      const container = document.getElementById('splitChatMessages');
-      const prompt = input.value.trim();
-      if (!prompt) return;
-
-      container.innerHTML += `<div class="bg-indigo-50 dark:bg-indigo-950 p-3 rounded-2xl ml-auto max-w-[85%] text-slate-800 dark:text-slate-200"><b>Ikaw:</b> ${escapeHtml(prompt)}</div>`;
-      input.value = '';
-      container.scrollTop = container.scrollHeight;
-
-      const loadId = "load_split_" + Date.now();
-      container.innerHTML += `<div id="${loadId}" class="bg-slate-100 dark:bg-slate-900 p-3 rounded-2xl text-slate-400 italic">Binubuo ni Gemini ang sagot at insights...</div>`;
-      container.scrollTop = container.scrollHeight;
-
-      google.script.run
-        .withSuccessHandler(res => {
-          document.getElementById(loadId).remove();
-          container.innerHTML += `<div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 space-y-1 max-w-[90%]"><b>Gemini AI:</b><br>${formatAiText(res)}</div>`;
-          container.scrollTop = container.scrollHeight;
-          document.getElementById('aiStrategicAdviceText').textContent = res.substring(0, 220) + "...";
-        })
-        .askGeminiAI(prompt, globalData);
+      sendAiMessage('split');
     }
 
-    function getInitialAiAdvice() {
+    
+    
+    
+    function sendAiMessage(
+      source
+    ) {
+
+      if (aiIsBusy) {
+        return;
+      }
+
+      const inputId =
+        source === 'split'
+          ? 'splitChatInput'
+          : 'popupChatInput';
+
+      const containerId =
+        source === 'split'
+          ? 'splitChatMessages'
+          : 'popupChatMessages';
+
+      const input =
+        document.getElementById(
+          inputId
+        );
+
+      const container =
+        document.getElementById(
+          containerId
+        );
+
+      if (!input || !container) {
+        return;
+      }
+
+      const prompt =
+        input.value.trim();
+
+      if (!prompt) {
+        return;
+      }
+
+      aiIsBusy = true;
+
+      
+      const previousHistory =
+        aiConversationHistory.slice(
+          -MAX_AI_HISTORY
+        );
+
+      addAiMessage(
+        'user',
+        prompt
+      );
+
+      syncAiConversations();
+
+      input.value = '';
+
+      const loadId =
+        'load_ai_' +
+        Date.now();
+
+      container.innerHTML += `
+        <div
+          id="${loadId}"
+          class="bg-slate-100 dark:bg-slate-900 p-3 rounded-2xl text-slate-400 italic"
+        >
+          ${
+            source === 'split'
+              ? 'Binubuo ni Gemini ang sagot at insights...'
+              : 'Nag-iisip si Gemini...'
+          }
+        </div>
+      `;
+
+      container.scrollTop =
+        container.scrollHeight;
+
       google.script.run
-        .withSuccessHandler(res => {
-          document.getElementById('aiStrategicAdviceText').textContent = res;
-        })
-        .askGeminiAI("Magbigay ng maikling strategic financial summary para sa aking kasalukuyang badyet at mga utang.", globalData);
+
+        .withSuccessHandler(
+          res => {
+
+            const loader =
+              document.getElementById(
+                loadId
+              );
+
+            if (loader) {
+              loader.remove();
+            }
+
+            addAiMessage(
+              'assistant',
+              res
+            );
+
+            syncAiConversations();
+
+            if (
+              source === 'split'
+            ) {
+
+              const advice =
+                document.getElementById(
+                  'aiStrategicAdviceText'
+                );
+
+              if (advice) {
+                advice.textContent =
+                  res;
+              }
+            }
+
+            aiIsBusy = false;
+          }
+        )
+
+        .withFailureHandler(
+          err => {
+
+            const loader =
+              document.getElementById(
+                loadId
+              );
+
+            if (loader) {
+              loader.remove();
+            }
+
+            const errorMessage =
+              'Sorry, nagkaroon ng error: ' +
+              (
+                err &&
+                err.message
+                  ? err.message
+                  : 'Unknown error'
+              );
+
+            addAiMessage(
+              'assistant',
+              errorMessage
+            );
+
+            syncAiConversations();
+
+            aiIsBusy = false;
+          }
+        )
+
+        .askGeminiAI(
+          prompt,
+          globalData,
+          previousHistory
+        );
+    }
+
+    // ==========================================================
+    
+    
+    function getInitialAiAdvice() {
+
+      google.script.run
+
+        .withSuccessHandler(
+          res => {
+
+            const advice =
+              document.getElementById(
+                'aiStrategicAdviceText'
+              );
+
+            if (advice) {
+              advice.textContent =
+                res;
+            }
+          }
+        )
+
+        .withFailureHandler(
+          err => {
+
+            const advice =
+              document.getElementById(
+                'aiStrategicAdviceText'
+              );
+
+            if (advice) {
+
+              advice.textContent =
+                'Unable to load AI strategic advice: ' +
+                (
+                  err &&
+                  err.message
+                    ? err.message
+                    : 'Unknown error'
+                );
+            }
+          }
+        )
+
+        .askGeminiAI(
+          'Magbigay ng maikling strategic financial summary para sa aking kasalukuyang budget, cashflow, savings, at debts.',
+          globalData,
+          aiConversationHistory.slice(
+            -MAX_AI_HISTORY
+          )
+        );
     }
 
     function triggerGitHubBackup() {
@@ -560,52 +1203,321 @@
     function closeDebtsModal() { document.getElementById('debtModal').classList.add('hidden'); }
 
     function renderDebtList() {
-      const container = document.getElementById('debtListContainer');
+
+      const container =
+        document.getElementById(
+          'debtListContainer'
+        );
+
       container.innerHTML = '';
-      if (globalData.debts.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400">Walang naka-log na utang o liabilities sa database.</p>`;
+
+      if (
+        !globalData.debts ||
+        globalData.debts.length === 0
+      ) {
+
+        container.innerHTML = `
+          <p class="text-xs text-slate-400">
+            Walang naka-log na utang o liabilities sa database.
+          </p>
+        `;
+
         return;
       }
-      globalData.debts.forEach(d => {
-        const progress = Math.min(Math.max(((d.initialAmount - d.remainingAmount) / d.initialAmount) * 100, 0), 100);
-        const div = document.createElement('div');
-        div.className = "bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2";
-        div.innerHTML = `
-          <div class="flex justify-between items-center text-sm font-semibold">
-            <span>${escapeHtml(d.creditor)}</span>
-            <span class="text-rose-500">₱${Number(d.remainingAmount).toLocaleString()} / ₱${Number(d.initialAmount).toLocaleString()}</span>
-          </div>
-          <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-            <div class="bg-amber-500 h-full transition-all" style="width: ${progress}%"></div>
-          </div>
-          <div class="flex justify-between items-center pt-1 text-xs text-slate-400">
-            <span>Progress: ${Math.round(progress)}% paid</span>
-            <button onclick="makePayment('${d.id}', ${d.remainingAmount})" class="text-indigo-600 font-medium hover:underline">Magbayad (Update Balance)</button>
-          </div>
-        `;
-        container.appendChild(div);
-      });
+
+      globalData.debts.forEach(
+        d => {
+
+          const initial =
+            Number(
+              d.initialAmount
+            ) || 0;
+
+          const remaining =
+            Number(
+              d.remainingAmount
+            ) || 0;
+
+          const progress =
+            initial > 0
+              ? Math.min(
+                  Math.max(
+                    (
+                      (
+                        initial -
+                        remaining
+                      ) /
+                      initial
+                    ) * 100,
+                    0
+                  ),
+                  100
+                )
+              : 0;
+
+          const div =
+            document.createElement(
+              'div'
+            );
+
+          div.className =
+            "bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2";
+
+          div.innerHTML = `
+
+            <div class="flex justify-between items-center text-sm font-semibold">
+              <span>
+                ${escapeHtml(
+                  d.creditor
+                )}
+              </span>
+
+              <span class="text-rose-500">
+                ₱${remaining.toLocaleString(
+                  'en-US',
+                  {
+                    minimumFractionDigits: 2
+                  }
+                )}
+
+                /
+
+                ₱${initial.toLocaleString(
+                  'en-US',
+                  {
+                    minimumFractionDigits: 2
+                  }
+                )}
+              </span>
+            </div>
+
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+
+              <div
+                class="bg-amber-500 h-full transition-all duration-500"
+                style="width: ${progress}%"
+              ></div>
+
+            </div>
+
+            <div class="flex justify-between items-center pt-1 text-xs text-slate-400">
+
+              <span>
+                Progress:
+                ${Math.round(progress)}%
+                paid
+              </span>
+
+              ${
+                remaining > 0
+                  ? `
+                    <button
+                      onclick="makePayment('${escapeJsString(d.id)}', ${remaining})"
+                      class="text-indigo-600 font-medium hover:underline"
+                    >
+                      Magbayad
+                    </button>
+                  `
+                  : `
+                    <span class="text-emerald-600 font-semibold">
+                      Paid
+                    </span>
+                  `
+              }
+
+            </div>
+          `;
+
+          container.appendChild(
+            div
+          );
+        }
+      );
     }
 
     function handleDebtSubmit(e) {
+
       e.preventDefault();
-      const debt = { creditor: document.getElementById('debtCreditor').value, amount: document.getElementById('debtAmount').value };
-      google.script.run.withSuccessHandler(() => {
-        document.getElementById('debtCreditor').value = '';
-        document.getElementById('debtAmount').value = '';
-        loadData();
-        setTimeout(openDebtsModal, 400);
-      }).addDebt(debt);
+
+      const debt = {
+        creditor:
+          document.getElementById(
+            'debtCreditor'
+          ).value.trim(),
+
+        amount:
+          document.getElementById(
+            'debtAmount'
+          ).value
+      };
+
+      if (
+        !debt.creditor ||
+        !debt.amount
+      ) {
+        return;
+      }
+
+      google.script.run
+
+        .withSuccessHandler(
+          res => {
+
+            if (
+              res &&
+              res.success === false
+            ) {
+
+              alert(
+                res.message ||
+                'Unable to add debt.'
+              );
+
+              return;
+            }
+
+            document.getElementById(
+              'debtCreditor'
+            ).value = '';
+
+            document.getElementById(
+              'debtAmount'
+            ).value = '';
+
+            
+            loadData(
+              () => {
+                openDebtsModal();
+              }
+            );
+          }
+        )
+
+        .withFailureHandler(
+          err => {
+
+            alert(
+              'Error: ' +
+              (
+                err &&
+                err.message
+                  ? err.message
+                  : 'Unable to add debt.'
+              )
+            );
+          }
+        )
+
+        .addDebt(
+          debt
+        );
     }
 
-    function makePayment(id, currentRemaining) {
-      const payAmt = prompt("Magkano ang ibinayad mo sa utang na ito?", "1000");
-      if (!payAmt || isNaN(payAmt)) return;
-      const newRemaining = Math.max(currentRemaining - Number(payAmt), 0);
-      google.script.run.withSuccessHandler(() => {
-        loadData();
-        setTimeout(openDebtsModal, 400);
-      }).updateDebtRemaining(id, newRemaining);
+    
+    
+    
+    function makePayment(
+      id,
+      currentRemaining
+    ) {
+
+      const payAmt =
+        prompt(
+          "Magkano ang ibinayad mo sa utang na ito?",
+          "1000"
+        );
+
+      if (
+        !payAmt ||
+        isNaN(payAmt)
+      ) {
+        return;
+      }
+
+      const amount =
+        Number(payAmt);
+
+      if (
+        amount <= 0
+      ) {
+
+        alert(
+          "Please enter a valid payment amount."
+        );
+
+        return;
+      }
+
+      if (
+        amount >
+        Number(currentRemaining)
+      ) {
+
+        alert(
+          "Ang payment ay hindi puwedeng lumampas sa remaining debt na ₱" +
+          Number(
+            currentRemaining
+          ).toLocaleString(
+            'en-US',
+            {
+              minimumFractionDigits: 2
+            }
+          )
+        );
+
+        return;
+      }
+
+      google.script.run
+
+        .withSuccessHandler(
+          res => {
+
+            if (
+              !res ||
+              !res.success
+            ) {
+
+              alert(
+                (
+                  res &&
+                  res.message
+                ) ||
+                'Hindi na-process ang debt payment.'
+              );
+
+              return;
+            }
+
+            
+            
+            loadData(
+              () => {
+                openDebtsModal();
+              }
+            );
+          }
+        )
+
+        .withFailureHandler(
+          err => {
+
+            alert(
+              'Error: ' +
+              (
+                err &&
+                err.message
+                  ? err.message
+                  : 'Unable to process debt payment.'
+              )
+            );
+          }
+        )
+
+        .makeDebtPayment(
+          id,
+          amount
+        );
     }
 
     function handleFormSubmit(e) {
@@ -637,8 +1549,39 @@
       document.documentElement.classList.toggle('dark');
       document.getElementById('themeIcon').className = document.documentElement.classList.contains('dark') ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
     }
-    function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-    function formatAiText(text) { return escapeHtml(text).replace(/\n/g, '<br>'); }
+    function escapeHtml(str) {
+      return String(
+        str == null
+          ? ''
+          : str
+      )
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeJsString(str) {
+      return String(
+        str == null
+          ? ''
+          : str
+      )
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
+    }
+
+    function formatAiText(text) {
+      return escapeHtml(
+        text
+      ).replace(
+        /\n/g,
+        '<br>'
+      );
+    }
   </script>
 </body>
 </html>
