@@ -1,1 +1,644 @@
- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Tracker Dashboard with AI Analytics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          animation: { 'fade-in': 'fadeIn 0.3s ease-out forwards', 'slide-up': 'slideUp 0.4s ease-out forwards' },
+          keyframes: {
+            fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+            slideUp: { '0%': { transform: 'translateY(15px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen transition-colors duration-300 pb-20">
+
+  
+  <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md">
+          <i class="fa-solid fa-wallet text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">MyFinance AI Dashboard</h1>
+          <p id="userEmailTag" class="text-xs text-slate-500 dark:text-slate-400">Loading session...</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl shadow-sm transition flex items-center space-x-2">
+          <i class="fa-solid fa-plus text-xs"></i><span>Add Transaction</span>
+        </button>
+        <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+          <i id="themeIcon" class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-slide-up">
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-semibold uppercase text-slate-400">Total Income</span>
+          <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 rounded-xl"><i class="fa-solid fa-arrow-trend-up"></i></div>
+        </div>
+        <div class="text-2xl font-bold" id="totalIncome">₱0.00</div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-semibold uppercase text-slate-400">Current Expenses</span>
+          <div class="p-2.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 rounded-xl"><i class="fa-solid fa-arrow-trend-down"></i></div>
+        </div>
+        <div class="text-2xl font-bold" id="totalExpenses">₱0.00</div>
+      </div>
+
+      
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-indigo-500 cursor-pointer transition" onclick="openSavingsModal()">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-semibold uppercase text-slate-400">Total Savings</span>
+          <div class="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 rounded-xl"><i class="fa-solid fa-piggy-bank"></i></div>
+        </div>
+        <div class="text-2xl font-bold" id="totalSavings">₱0.00</div>
+        <span class="text-xs text-indigo-500 font-medium mt-2 inline-block">Click to view breakdown →</span>
+      </div>
+
+      
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-amber-500 cursor-pointer transition" onclick="openDebtsModal()">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-semibold uppercase text-slate-400">Total Debts (Liabilities)</span>
+          <div class="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 rounded-xl"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+        </div>
+        <div class="text-2xl font-bold" id="totalDebts">₱0.00</div>
+        <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div id="debtBar" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    
+    <div id="adminGitHubPanel" class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900 shadow-sm hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center space-x-2 text-indigo-600 dark:text-indigo-400">
+          <i class="fa-brands fa-github text-lg"></i><span>Admin GitHub Version Control</span>
+        </h3>
+        <span class="bg-indigo-50 dark:bg-indigo-950 text-indigo-600 text-xs px-2.5 py-1 rounded-full font-semibold">Restricted: Admin Only</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Target Branch</label>
+          <select id="gitBranch" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+            <option value="testing">🧪 testing (Trial & Error)</option>
+            <option value="development">🐛 development (Debugging)</option>
+            <option value="main">🚀 main (Production / Live)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">File to Backup</label>
+          <select id="gitFile" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+            <option value="Code.gs">Code.gs (Backend)</option>
+            <option value="Page.html">Page.html (Frontend)</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button onclick="triggerGitHubBackup()" id="syncBtn" class="w-full bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-xl transition flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-cloud-arrow-up"></i><span>Push Full Code to GitHub</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+        <h2 class="font-bold text-base">Recent Transactions</h2>
+        <button onclick="loadData()" class="text-slate-400 hover:text-indigo-600"><i id="refreshIcon" class="fa-solid fa-rotate"></i></button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-900/50 text-slate-400 text-xs font-semibold uppercase border-b border-slate-200 dark:border-slate-700">
+              <th class="py-3 px-6">Date</th>
+              <th class="py-3 px-6">Description</th>
+              <th class="py-3 px-6">Type</th>
+              <th class="py-3 px-6">Category</th>
+              <th class="py-3 px-6 text-right">Amount</th>
+              <th class="py-3 px-6 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="transactionTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  
+  <div class="fixed bottom-6 right-6 z-45">
+    <button onclick="toggleAiPopup()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-2xl flex items-center space-x-2 transition transform hover:scale-105">
+      <i class="fa-solid fa-robot text-xl"></i>
+      <span class="text-sm font-bold pr-1">Gemini AI Advisor</span>
+    </button>
+  </div>
+
+  
+  <div id="aiPopupModal" class="fixed bottom-20 right-6 w-96 max-w-[92vw] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 hidden flex flex-col h-[450px] animate-slide-up">
+    <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-indigo-600 text-white rounded-t-2xl">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-robot"></i>
+        <h3 class="font-bold text-sm">Gemini Financial Assistant</h3>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="openSplitScreenAI()" title="Full Screen Split Analytics" class="hover:bg-indigo-700 p-1.5 rounded-lg transition"><i class="fa-solid fa-expand text-xs"></i></button>
+        <button onclick="toggleAiPopup()" class="hover:bg-indigo-700 p-1.5 rounded-lg transition"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div id="popupChatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
+      <div class="bg-slate-100 dark:bg-slate-900 p-3 rounded-xl text-slate-700 dark:text-slate-300">
+        Hello John Ray! Pwede mo akong tanungin tungkol sa sahod, budget, o mga utang mo. O i-click ang expand button para sa AI Split-Screen Analytics!
+      </div>
+    </div>
+    <div class="p-3 border-t border-slate-200 dark:border-slate-700 flex space-x-2 bg-slate-50 dark:bg-slate-900/50 rounded-b-2xl">
+      <input type="text" id="popupChatInput" placeholder="Magtanong kay Gemini..." onkeypress="if(event.key === 'Enter') sendPopupAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <button onclick="sendPopupAI()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-sm transition"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  
+  <div id="splitAiModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 sm:p-6">
+    <div class="bg-white dark:bg-slate-800 w-full max-w-7xl h-[92vh] rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden animate-fade-in">
+      
+      
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
+        <div class="flex items-center space-x-3">
+          <div class="bg-indigo-600 text-white p-2 rounded-xl"><i class="fa-solid fa-brain"></i></div>
+          <div>
+            <h2 class="font-bold text-base">Gemini AI Financial Command Center & Analytics</h2>
+            <p class="text-xs text-slate-400">Interactive Chat & Automated Insights Split-Screen</p>
+          </div>
+        </div>
+        <button onclick="closeSplitScreenAI()" class="bg-slate-200 dark:bg-slate-700 hover:bg-rose-600 hover:text-white p-2 rounded-xl transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 overflow-hidden">
+        
+        
+        <div class="flex flex-col h-full border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div class="p-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 font-semibold text-xs uppercase text-slate-400">
+            AI Conversation Stream
+          </div>
+          <div id="splitChatMessages" class="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
+            <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 max-w-[85%]">
+              Hello John Ray! Nandito ako sa iyong Split-Screen Command Center. Magtanong ka tungkol sa iyong diskarte sa pera at makikita mo ang kaukulang financial graphs sa kanang bahagi!
+            </div>
+          </div>
+          <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex space-x-2 bg-slate-50 dark:bg-slate-900">
+            <input type="text" id="splitChatInput" placeholder="Mag-type ng mensahe o tanong kay Gemini..." onkeypress="if(event.key === 'Enter') sendSplitAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="sendSplitAI()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send</button>
+          </div>
+        </div>
+
+        
+        <div class="flex flex-col h-full bg-slate-50 dark:bg-slate-900/40 p-6 overflow-y-auto space-y-6">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm uppercase text-slate-500 tracking-wider">Automated Financial Insights & Metrics</h3>
+            <button onclick="loadData()" class="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 px-3 py-1.5 rounded-lg font-semibold hover:bg-indigo-100">Refresh Data</button>
+          </div>
+
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+              <span class="text-xs text-slate-400 block mb-1">Net Cashflow</span>
+              <span id="splitNetCash" class="text-xl font-bold">₱0.00</span>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+              <span class="text-xs text-slate-400 block mb-1">Debt Payoff Progress</span>
+              <span id="splitDebtProgressText" class="text-xl font-bold text-amber-500">0%</span>
+            </div>
+          </div>
+
+          
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+            <h4 class="font-bold text-xs uppercase text-slate-400">Expense vs Income Ratio</h4>
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between text-xs font-semibold mb-1">
+                  <span>Income Utilization</span>
+                  <span id="incomeRatioVal">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                  <div id="incomeBarGraph" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-semibold mb-1">
+                  <span>Debt Liability Ratio</span>
+                  <span id="debtRatioVal">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                  <div id="debtRatioBar" class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          
+          <div class="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 p-5 rounded-2xl space-y-2">
+            <h4 class="font-bold text-xs uppercase text-indigo-600 dark:text-indigo-400 flex items-center space-x-2">
+              <i class="fa-solid fa-lightbulb"></i><span>Gemini Strategic Advice</span>
+            </h4>
+            <p id="aiStrategicAdviceText" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Mag-log ng mga bagong transaksyon o utang upang makapagbigay si Gemini ng customized na pag-analisa sa iyong cashflow.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="savingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-lg flex items-center space-x-2"><i class="fa-solid fa-piggy-bank text-blue-500"></i><span>Savings Breakdown</span></h3>
+        <button onclick="closeSavingsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <p class="text-xs text-slate-400">Listahan ng lahat ng iyong mga in-log na savings transactions:</p>
+      <div id="savingsListContainer" class="space-y-2 max-h-60 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  
+  <div id="debtModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-lg flex items-center space-x-2"><i class="fa-solid fa-file-invoice-dollar text-amber-500"></i><span>Debt Manager (Maya & Liabilities)</span></h3>
+        <button onclick="closeDebtsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form onsubmit="handleDebtSubmit(event)" class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+        <h4 class="text-xs font-bold uppercase text-slate-500">Add New Liability</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input type="text" id="debtCreditor" required placeholder="Creditor Name" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+          <input type="number" id="debtAmount" required placeholder="Amount (e.g., 6000)" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl text-sm py-2">Add Debt</button>
+        </div>
+      </form>
+      <div class="space-y-4">
+        <h4 class="text-xs font-bold uppercase text-slate-500">Active Debts Breakdown</h4>
+        <div id="debtListContainer" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="txModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-lg">New Transaction</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="txForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Type</label>
+          <select id="txType" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+            <option value="income">Income / Salary</option>
+            <option value="expense">Expense</option>
+            <option value="savings">Savings</option>
+            <option value="debt">Debt Payment</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Description</label>
+          <input type="text" id="txDesc" required placeholder="e.g., Grocery or Maya Payment" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Category</label>
+            <input type="text" id="txCategory" required placeholder="General" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Amount (₱)</label>
+            <input type="number" step="any" id="txAmount" required placeholder="0.00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Date</label>
+          <input type="date" id="txDate" required class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+        </div>
+        <div class="flex justify-end space-x-3 pt-2">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl text-sm bg-slate-100 dark:bg-slate-700">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl text-sm bg-indigo-600 text-white font-medium">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let globalData = { transactions: [], debts: [], user: { email: '', isAdmin: false } };
+
+    window.onload = function() {
+      document.getElementById('txDate').valueAsDate = new Date();
+      loadData();
+    };
+
+    function loadData() {
+      document.getElementById('refreshIcon').classList.add('animate-spin');
+      google.script.run.withSuccessHandler(res => {
+        globalData = res;
+        renderDashboard(res);
+        document.getElementById('refreshIcon').classList.remove('animate-spin');
+      }).getSheetData();
+    }
+
+    function renderDashboard({ transactions, debts, user }) {
+      if (user && user.email) {
+        document.getElementById('userEmailTag').textContent = user.email + (user.isAdmin ? " (Admin)" : "");
+        if (user.isAdmin) {
+          document.getElementById('adminGitHubPanel').classList.remove('hidden');
+        } else {
+          document.getElementById('adminGitHubPanel').classList.add('hidden');
+        }
+      }
+
+      let income = 0, expenses = 0, savings = 0, totalDebtAmount = 0, totalInitialDebt = 0;
+      
+      transactions.forEach(tx => {
+        const amt = Number(tx.amount);
+        if (tx.type === 'income') income += amt;
+        else if (tx.type === 'expense') expenses += amt;
+        else if (tx.type === 'savings') savings += amt;
+      });
+
+      debts.forEach(d => { 
+        totalDebtAmount += Number(d.remainingAmount); 
+        totalInitialDebt += Number(d.initialAmount);
+      });
+
+      document.getElementById('totalIncome').textContent = formatCurrency(income);
+      document.getElementById('totalExpenses').textContent = formatCurrency(expenses);
+      document.getElementById('totalSavings').textContent = formatCurrency(savings);
+      document.getElementById('totalDebts').textContent = formatCurrency(totalDebtAmount);
+
+      const debtProgress = totalInitialDebt > 0 ? Math.min(Math.max(((totalInitialDebt - totalDebtAmount) / totalInitialDebt) * 100, 0), 100) : 0;
+      document.getElementById('debtBar').style.width = debtProgress + '%';
+
+      const netCash = income - expenses;
+      document.getElementById('splitNetCash').textContent = formatCurrency(netCash);
+      document.getElementById('splitDebtProgressText').textContent = Math.round(debtProgress) + '% Paid';
+      
+      const incomeRatio = income > 0 ? Math.min(Math.round((expenses / income) * 100), 100) : 0;
+      document.getElementById('incomeRatioVal').textContent = incomeRatio + '%';
+      document.getElementById('incomeBarGraph').style.width = incomeRatio + '%';
+
+      const debtRatio = income > 0 ? Math.min(Math.round((totalDebtAmount / income) * 100), 100) : 0;
+      document.getElementById('debtRatioVal').textContent = debtRatio + '%';
+      document.getElementById('debtRatioBar').style.width = debtRatio + '%';
+
+      renderTable(transactions);
+    }
+
+    function renderTable(transactions) {
+      const tbody = document.getElementById('transactionTableBody');
+      tbody.innerHTML = '';
+      if (transactions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No transactions recorded yet.</td></tr>`;
+        return;
+      }
+      [...transactions].reverse().forEach(tx => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-900/30 transition";
+        tr.innerHTML = `
+          <td class="py-3 px-6 text-slate-500">${tx.date}</td>
+          <td class="py-3 px-6 font-medium">${tx.description}</td>
+          <td class="py-3 px-6"><span class="px-2.5 py-1 rounded-full text-xs font-semibold uppercase bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${tx.type}</span></td>
+          <td class="py-3 px-6 text-slate-500">${tx.category}</td>
+          <td class="py-3 px-6 text-right font-bold">₱${Number(tx.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+          <td class="py-3 px-6 text-center"><button onclick="deleteRow('${tx.id}')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleAiPopup() {
+      document.getElementById('aiPopupModal').classList.toggle('hidden');
+    }
+
+    function openSplitScreenAI() {
+      document.getElementById('aiPopupModal').classList.add('hidden');
+      document.getElementById('splitAiModal').classList.remove('hidden');
+      getInitialAiAdvice();
+    }
+
+    function closeSplitScreenAI() {
+      document.getElementById('splitAiModal').classList.add('hidden');
+    }
+
+    function sendPopupAI() {
+      const input = document.getElementById('popupChatInput');
+      const container = document.getElementById('popupChatMessages');
+      const prompt = input.value.trim();
+      if (!prompt) return;
+
+      container.innerHTML += `<div class="bg-indigo-50 dark:bg-indigo-950 p-2.5 rounded-xl ml-auto max-w-[85%] text-slate-800 dark:text-slate-200"><b>Ikaw:</b> ${escapeHtml(prompt)}</div>`;
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+
+      const loadId = "load_" + Date.now();
+      container.innerHTML += `<div id="${loadId}" class="bg-slate-100 dark:bg-slate-900 p-2.5 rounded-xl text-slate-400 italic">Nag-iisip si Gemini...</div>`;
+      container.scrollTop = container.scrollHeight;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById(loadId).remove();
+          container.innerHTML += `<div class="bg-slate-100 dark:bg-slate-900 p-2.5 rounded-xl text-slate-700 dark:text-slate-300 space-y-1"><b>Gemini:</b><br>${formatAiText(res)}</div>`;
+          container.scrollTop = container.scrollHeight;
+        })
+        .askGeminiAI(prompt, globalData);
+    }
+
+    function sendSplitAI() {
+      const input = document.getElementById('splitChatInput');
+      const container = document.getElementById('splitChatMessages');
+      const prompt = input.value.trim();
+      if (!prompt) return;
+
+      container.innerHTML += `<div class="bg-indigo-50 dark:bg-indigo-950 p-3 rounded-2xl ml-auto max-w-[85%] text-slate-800 dark:text-slate-200"><b>Ikaw:</b> ${escapeHtml(prompt)}</div>`;
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+
+      const loadId = "load_split_" + Date.now();
+      container.innerHTML += `<div id="${loadId}" class="bg-slate-100 dark:bg-slate-900 p-3 rounded-2xl text-slate-400 italic">Binubuo ni Gemini ang sagot at insights...</div>`;
+      container.scrollTop = container.scrollHeight;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById(loadId).remove();
+          container.innerHTML += `<div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 space-y-1 max-w-[90%]"><b>Gemini AI:</b><br>${formatAiText(res)}</div>`;
+          container.scrollTop = container.scrollHeight;
+          document.getElementById('aiStrategicAdviceText').textContent = res.substring(0, 220) + "...";
+        })
+        .askGeminiAI(prompt, globalData);
+    }
+
+    function getInitialAiAdvice() {
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById('aiStrategicAdviceText').textContent = res;
+        })
+        .askGeminiAI("Magbigay ng maikling strategic financial summary para sa aking kasalukuyang badyet at mga utang.", globalData);
+    }
+
+    function triggerGitHubBackup() {
+      const branch = document.getElementById('gitBranch').value;
+      const fileName = document.getElementById('gitFile').value;
+      const btn = document.getElementById('syncBtn');
+      
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Syncing ${fileName} to ${branch}...</span>`;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          alert(res.message);
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span>Push Full Code to GitHub</span>`;
+        })
+        .withFailureHandler(err => {
+          alert("Error: " + err.message);
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span>Push Full Code to GitHub</span>`;
+        })
+        .backupCodeToGitHub(branch, fileName);
+    }
+
+    function openSavingsModal() {
+      const modal = document.getElementById('savingsModal');
+      const container = document.getElementById('savingsListContainer');
+      container.innerHTML = '';
+      
+      const savingsTx = globalData.transactions.filter(t => t.type === 'savings');
+      if (savingsTx.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-3 text-center">Walang pang naka-log na savings transactions.</p>`;
+      } else {
+        savingsTx.forEach(s => {
+          container.innerHTML += `
+            <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm">
+              <div>
+                <p class="font-medium">${escapeHtml(s.description)}</p>
+                <span class="text-xs text-slate-400">${s.date} • ${s.category}</span>
+              </div>
+              <span class="font-bold text-blue-600">₱${Number(s.amount).toLocaleString()}</span>
+            </div>
+          `;
+        });
+      }
+      modal.classList.remove('hidden');
+    }
+    function closeSavingsModal() { document.getElementById('savingsModal').classList.add('hidden'); }
+
+    function openDebtsModal() {
+      document.getElementById('debtModal').classList.remove('hidden');
+      renderDebtList();
+    }
+    function closeDebtsModal() { document.getElementById('debtModal').classList.add('hidden'); }
+
+    function renderDebtList() {
+      const container = document.getElementById('debtListContainer');
+      container.innerHTML = '';
+      if (globalData.debts.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400">Walang naka-log na utang o liabilities sa database.</p>`;
+        return;
+      }
+      globalData.debts.forEach(d => {
+        const progress = Math.min(Math.max(((d.initialAmount - d.remainingAmount) / d.initialAmount) * 100, 0), 100);
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2";
+        div.innerHTML = `
+          <div class="flex justify-between items-center text-sm font-semibold">
+            <span>${escapeHtml(d.creditor)}</span>
+            <span class="text-rose-500">₱${Number(d.remainingAmount).toLocaleString()} / ₱${Number(d.initialAmount).toLocaleString()}</span>
+          </div>
+          <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div class="bg-amber-500 h-full transition-all" style="width: ${progress}%"></div>
+          </div>
+          <div class="flex justify-between items-center pt-1 text-xs text-slate-400">
+            <span>Progress: ${Math.round(progress)}% paid</span>
+            <button onclick="makePayment('${d.id}', ${d.remainingAmount})" class="text-indigo-600 font-medium hover:underline">Magbayad (Update Balance)</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function handleDebtSubmit(e) {
+      e.preventDefault();
+      const debt = { creditor: document.getElementById('debtCreditor').value, amount: document.getElementById('debtAmount').value };
+      google.script.run.withSuccessHandler(() => {
+        document.getElementById('debtCreditor').value = '';
+        document.getElementById('debtAmount').value = '';
+        loadData();
+        setTimeout(openDebtsModal, 400);
+      }).addDebt(debt);
+    }
+
+    function makePayment(id, currentRemaining) {
+      const payAmt = prompt("Magkano ang ibinayad mo sa utang na ito?", "1000");
+      if (!payAmt || isNaN(payAmt)) return;
+      const newRemaining = Math.max(currentRemaining - Number(payAmt), 0);
+      google.script.run.withSuccessHandler(() => {
+        loadData();
+        setTimeout(openDebtsModal, 400);
+      }).updateDebtRemaining(id, newRemaining);
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const tx = {
+        type: document.getElementById('txType').value,
+        description: document.getElementById('txDesc').value,
+        category: document.getElementById('txCategory').value,
+        amount: document.getElementById('txAmount').value,
+        date: document.getElementById('txDate').value
+      };
+      google.script.run.withSuccessHandler(() => {
+        closeModal();
+        document.getElementById('txForm').reset();
+        document.getElementById('txDate').valueAsDate = new Date();
+        loadData();
+      }).addTransaction(tx);
+    }
+
+    function deleteRow(id) {
+      if (!confirm("Burahin ang transaksyong ito?")) return;
+      google.script.run.withSuccessHandler(() => loadData()).deleteTransaction(id);
+    }
+
+    function openModal() { document.getElementById('txModal').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('txModal').classList.add('hidden'); }
+    function formatCurrency(n) { return '₱' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 }); }
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      document.getElementById('themeIcon').className = document.documentElement.classList.contains('dark') ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
+    function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function formatAiText(text) { return escapeHtml(text).replace(/\n/g, '<br>'); }
+  </script>
+</body>
+</html>
