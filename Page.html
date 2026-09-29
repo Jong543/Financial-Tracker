@@ -22,9 +22,135 @@
       }
     }
   </script>
+  <style>
+     
+    .savings-modal-panel {
+      width: min(96vw, 1080px);
+      max-height: 92vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .savings-main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.25rem;
+    }
+    .savings-overview-layout {
+      display: grid;
+      grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .savings-chart-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-width: 0;
+    }
+    .savings-pie-chart {
+      width: 190px;
+      height: 190px;
+      max-width: 100%;
+      border-radius: 9999px;
+      position: relative;
+      flex: 0 0 auto;
+      box-shadow: inset 0 0 0 1px rgba(148,163,184,0.18), 0 8px 20px rgba(15,23,42,0.08);
+      transition: background 350ms ease, transform 350ms ease;
+    }
+    .savings-pie-chart:hover {
+      transform: scale(1.015);
+    }
+    .savings-pie-chart::after {
+      content: "";
+      position: absolute;
+      inset: 29%;
+      background: white;
+      border-radius: 9999px;
+      box-shadow: 0 0 0 1px rgba(148,163,184,0.12);
+    }
+    .dark .savings-pie-chart::after {
+      background: rgb(30 41 59);
+    }
+    .savings-pie-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 2;
+      pointer-events: none;
+      text-align: center;
+      padding: 0.75rem;
+    }
+    .savings-legend {
+      min-width: 0;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+    .savings-legend-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .savings-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+    .savings-account-list,
+    .savings-transaction-list {
+      min-width: 0;
+    }
+    .savings-breakdown-card {
+      min-width: 0;
+      overflow: hidden;
+    }
+    .live-sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 9999px;
+      display: inline-block;
+      background: #10B981;
+      box-shadow: 0 0 0 0 rgba(16,185,129,0.55);
+      animation: livePulse 1.8s infinite;
+    }
+    @keyframes livePulse {
+      0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.45); }
+      70% { box-shadow: 0 0 0 7px rgba(16,185,129,0); }
+      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+    }
+    @media (min-width: 1100px) {
+      .savings-main-grid {
+        grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+      }
+    }
+    @media (max-width: 720px) {
+      .savings-modal-panel {
+        width: 96vw;
+        max-height: 94vh;
+        padding: 1rem !important;
+      }
+      .savings-overview-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+      }
+      .savings-pie-chart {
+        width: 175px;
+        height: 175px;
+      }
+      .savings-legend {
+        max-height: none;
+      }
+    }
+  </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen transition-colors duration-300 pb-20">
-
+ 
   
   <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -38,6 +164,9 @@
         </div>
       </div>
       <div class="flex items-center space-x-3">
+        <span id="syncStatus" class="hidden sm:inline-flex items-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/70">
+          <span class="live-sync-dot"></span> Live sync
+        </span>
         <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl shadow-sm transition flex items-center space-x-2">
           <i class="fa-solid fa-plus text-xs"></i><span>Add Transaction</span>
         </button>
@@ -47,51 +176,79 @@
       </div>
     </div>
   </header>
-
+ 
   
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-
+ 
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-slide-up">
+    <div class="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-slide-up">
+      <div class="min-w-0">
+        <h3 class="font-bold text-sm flex items-center space-x-2">
+          <i class="fa-solid fa-calendar-check text-indigo-500"></i>
+          <span>Cut-Off Period</span>
+        </h3>
+        <p id="cutoffRangeLabel" class="text-xs text-slate-400 mt-1">&mdash;</p>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <select id="cutoffSelect" onchange="onCutoffChange()" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm"></select>
+        <button onclick="resetCutoffToCurrent()" class="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 px-3 py-2 rounded-xl font-semibold hover:bg-indigo-100">Current</button>
+      </div>
+    </div>
+ 
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 animate-slide-up">
+ 
       <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-semibold uppercase text-slate-400">Total Income</span>
+          <span class="text-xs font-semibold uppercase text-slate-400">Income (Cut-Off)</span>
           <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 rounded-xl"><i class="fa-solid fa-arrow-trend-up"></i></div>
         </div>
-        <div class="text-2xl font-bold" id="totalIncome">₱0.00</div>
+        <div class="text-2xl font-bold" id="totalIncome">&#8369;0.00</div>
+        <span id="incomeCutoffNote" class="text-xs text-slate-400 font-medium mt-2 inline-block">&mdash;</span>
       </div>
-
+ 
       <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-semibold uppercase text-slate-400">Current Expenses</span>
+          <span class="text-xs font-semibold uppercase text-slate-400">Expenses (Cut-Off)</span>
           <div class="p-2.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 rounded-xl"><i class="fa-solid fa-arrow-trend-down"></i></div>
         </div>
-        <div class="text-2xl font-bold" id="totalExpenses">₱0.00</div>
+        <div class="text-2xl font-bold" id="totalExpenses">&#8369;0.00</div>
+        <span id="expenseCutoffNote" class="text-xs text-slate-400 font-medium mt-2 inline-block">&mdash;</span>
       </div>
-
+ 
+      
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border-2 border-indigo-500 shadow-sm cursor-pointer hover:shadow-md transition" onclick="openCutoffModal()">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-semibold uppercase text-slate-400">Available Balance</span>
+          <div class="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 rounded-xl"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+        </div>
+        <div class="text-2xl font-bold text-indigo-600" id="availableBalance">&#8369;0.00</div>
+        <span id="availableBalanceNote" class="text-xs text-slate-400 font-medium mt-2 inline-block">Pwede pang gastusin</span>
+      </div>
+ 
       
       <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-indigo-500 cursor-pointer transition" onclick="openSavingsModal()">
         <div class="flex items-center justify-between mb-4">
           <span class="text-xs font-semibold uppercase text-slate-400">Total Savings</span>
           <div class="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 rounded-xl"><i class="fa-solid fa-piggy-bank"></i></div>
         </div>
-        <div class="text-2xl font-bold" id="totalSavings">₱0.00</div>
-        <span class="text-xs text-indigo-500 font-medium mt-2 inline-block">Click to view breakdown →</span>
+        <div class="text-2xl font-bold" id="totalSavings">&#8369;0.00</div>
+        <span class="text-xs text-indigo-500 font-medium mt-2 inline-block">All-time &middot; Click to view breakdown &rarr;</span>
       </div>
-
+ 
       
       <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-amber-500 cursor-pointer transition" onclick="openDebtsModal()">
         <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-semibold uppercase text-slate-400">Total Debts (Liabilities)</span>
+          <span class="text-xs font-semibold uppercase text-slate-400">Total Debts</span>
           <div class="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 rounded-xl"><i class="fa-solid fa-file-invoice-dollar"></i></div>
         </div>
-        <div class="text-2xl font-bold" id="totalDebts">₱0.00</div>
+        <div class="text-2xl font-bold" id="totalDebts">&#8369;0.00</div>
         <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
           <div id="debtBar" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
         </div>
       </div>
     </div>
-
+ 
     
     <div id="adminGitHubPanel" class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900 shadow-sm hidden space-y-4">
       <div class="flex items-center justify-between">
@@ -104,15 +261,14 @@
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">Target Branch</label>
           <select id="gitBranch" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
-            <option value="testing">🧪 testing (Trial & Error)</option>
-            <option value="development">🐛 development (Debugging)</option>
-            <option value="main">🚀 main (Production / Live)</option>
+            <option value="testing">testing (Trial &amp; Error)</option>
+            <option value="development">development (Debugging)</option>
+            <option value="main">main (Production / Live)</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-400 mb-1">File to Backup</label>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">File to Backup <span class="font-normal normal-case">(Code.gs: manual)</span></label>
           <select id="gitFile" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
-            <option value="Code.gs">Code.gs (Backend)</option>
             <option value="Page.html">Page.html (Frontend)</option>
           </select>
         </div>
@@ -123,11 +279,14 @@
         </div>
       </div>
     </div>
-
+ 
     
     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
       <div class="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-        <h2 class="font-bold text-base">Recent Transactions</h2>
+        <div>
+          <h2 class="font-bold text-base">Transactions</h2>
+          <p id="tableScopeLabel" class="text-xs text-slate-400 mt-0.5">&mdash;</p>
+        </div>
         <button onclick="loadData()" class="text-slate-400 hover:text-indigo-600"><i id="refreshIcon" class="fa-solid fa-rotate"></i></button>
       </div>
       <div class="overflow-x-auto">
@@ -147,15 +306,15 @@
       </div>
     </div>
   </main>
-
+ 
   
-  <div class="fixed bottom-6 right-6 z-45">
+  <div class="fixed bottom-6 right-6 z-40">
     <button onclick="toggleAiPopup()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-2xl flex items-center space-x-2 transition transform hover:scale-105">
       <i class="fa-solid fa-robot text-xl"></i>
-      <span class="text-sm font-bold pr-1">ChatGPT AI Advisor</span>
+      <span class="text-sm font-bold pr-1">Gemini AI Advisor</span>
     </button>
   </div>
-
+ 
   
   <div id="aiPopupModal" class="fixed bottom-20 right-6 w-96 max-w-[92vw] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 hidden flex flex-col h-[450px] animate-slide-up">
     <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-indigo-600 text-white rounded-t-2xl">
@@ -168,72 +327,58 @@
         <button onclick="toggleAiPopup()" class="hover:bg-indigo-700 p-1.5 rounded-lg transition"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
-    <div id="popupChatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
-      <div class="bg-slate-100 dark:bg-slate-900 p-3 rounded-xl text-slate-700 dark:text-slate-300">
-        Hello John Ray! Pwede mo akong tanungin tungkol sa sahod, budget, o mga utang mo. O i-click ang expand button para sa AI Split-Screen Analytics!
-      </div>
-    </div>
+    <div id="popupChatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
     <div class="p-3 border-t border-slate-200 dark:border-slate-700 flex space-x-2 bg-slate-50 dark:bg-slate-900/50 rounded-b-2xl">
-      <input type="text" id="popupChatInput" placeholder="Magtanong kay ChatGPT..." onkeypress="if(event.key === 'Enter') sendPopupAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <input type="text" id="popupChatInput" placeholder="Magtanong kay Gemini..." onkeypress="if(event.key === 'Enter') sendPopupAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       <button onclick="sendPopupAI()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-sm transition"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
   </div>
-
+ 
   
   <div id="splitAiModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 sm:p-6">
     <div class="bg-white dark:bg-slate-800 w-full max-w-7xl h-[92vh] rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden animate-fade-in">
-      
-      
+ 
       <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
         <div class="flex items-center space-x-3">
           <div class="bg-indigo-600 text-white p-2 rounded-xl"><i class="fa-solid fa-brain"></i></div>
           <div>
-            <h2 class="font-bold text-base">Gemini AI Financial Command Center & Analytics</h2>
-            <p class="text-xs text-slate-400">Interactive Chat & Automated Insights Split-Screen</p>
+            <h2 class="font-bold text-base">Gemini AI Financial Command Center &amp; Analytics</h2>
+            <p class="text-xs text-slate-400">Interactive Chat &amp; Automated Insights Split-Screen</p>
           </div>
         </div>
         <button onclick="closeSplitScreenAI()" class="bg-slate-200 dark:bg-slate-700 hover:bg-rose-600 hover:text-white p-2 rounded-xl transition"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-
-      
+ 
       <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 overflow-hidden">
-        
-        
+ 
         <div class="flex flex-col h-full border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <div class="p-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 font-semibold text-xs uppercase text-slate-400">
             AI Conversation Stream
           </div>
-          <div id="splitChatMessages" class="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
-            <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 max-w-[85%]">
-              Hello John Ray! Nandito ako sa iyong Split-Screen Command Center. Magtanong ka tungkol sa iyong diskarte sa pera at makikita mo ang kaukulang financial graphs sa kanang bahagi!
-            </div>
-          </div>
+          <div id="splitChatMessages" class="flex-1 overflow-y-auto p-4 space-y-4 text-sm"></div>
           <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex space-x-2 bg-slate-50 dark:bg-slate-900">
-            <input type="text" id="splitChatInput" placeholder="Mag-type ng mensahe o tanong kay ChatGPT..." onkeypress="if(event.key === 'Enter') sendSplitAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="splitChatInput" placeholder="Mag-type ng mensahe o tanong kay Gemini..." onkeypress="if(event.key === 'Enter') sendSplitAI()" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <button onclick="sendSplitAI()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition"><i class="fa-solid fa-paper-plane mr-1"></i> Send</button>
           </div>
         </div>
-
-        
+ 
         <div class="flex flex-col h-full bg-slate-50 dark:bg-slate-900/40 p-6 overflow-y-auto space-y-6">
           <div class="flex items-center justify-between">
-            <h3 class="font-bold text-sm uppercase text-slate-500 tracking-wider">Automated Financial Insights & Metrics</h3>
+            <h3 class="font-bold text-sm uppercase text-slate-500 tracking-wider">Automated Financial Insights &amp; Metrics</h3>
             <button onclick="loadData()" class="text-xs bg-indigo-50 dark:bg-indigo-950 text-indigo-600 px-3 py-1.5 rounded-lg font-semibold hover:bg-indigo-100">Refresh Data</button>
           </div>
-
-          
+ 
           <div class="grid grid-cols-2 gap-4">
             <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-              <span class="text-xs text-slate-400 block mb-1">Net Cashflow</span>
-              <span id="splitNetCash" class="text-xl font-bold">₱0.00</span>
+              <span class="text-xs text-slate-400 block mb-1">Net Cashflow (Cut-Off)</span>
+              <span id="splitNetCash" class="text-xl font-bold">&#8369;0.00</span>
             </div>
             <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
               <span class="text-xs text-slate-400 block mb-1">Debt Payoff Progress</span>
               <span id="splitDebtProgressText" class="text-xl font-bold text-amber-500">0%</span>
             </div>
           </div>
-
-          
+ 
           <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
             <h4 class="font-bold text-xs uppercase text-slate-400">Expense vs Income Ratio</h4>
             <div class="space-y-3">
@@ -257,40 +402,146 @@
               </div>
             </div>
           </div>
-
-          
+ 
           <div class="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 p-5 rounded-2xl space-y-2">
             <h4 class="font-bold text-xs uppercase text-indigo-600 dark:text-indigo-400 flex items-center space-x-2">
-              <i class="fa-solid fa-lightbulb"></i><span>ChatGPT Strategic Advice</span>
+              <i class="fa-solid fa-lightbulb"></i><span>Gemini Strategic Advice</span>
             </h4>
             <p id="aiStrategicAdviceText" class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Mag-log ng mga bagong transaksyon o utang upang makapagbigay si ChatGPT ng customized na pag-analisa sa iyong cashflow.
+              Mag-log ng mga bagong transaksyon o utang upang makapagbigay si Gemini ng customized na pag-analisa sa iyong cashflow.
             </p>
           </div>
-
         </div>
-
       </div>
     </div>
   </div>
-
+ 
   
-  <div id="savingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-bold text-lg flex items-center space-x-2"><i class="fa-solid fa-piggy-bank text-blue-500"></i><span>Savings Breakdown</span></h3>
-        <button onclick="closeSavingsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+  <div id="cutoffModal" class="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-5 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h3 class="font-bold text-lg flex items-center space-x-2">
+            <i class="fa-solid fa-calendar-check text-indigo-500"></i>
+            <span>Cut-Off Breakdown</span>
+          </h3>
+          <p id="cutoffModalRange" class="text-xs text-slate-400 mt-1">&mdash;</p>
+        </div>
+        <button onclick="closeCutoffModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
       </div>
-      <p class="text-xs text-slate-400">Listahan ng lahat ng iyong mga in-log na savings transactions:</p>
-      <div id="savingsListContainer" class="space-y-2 max-h-60 overflow-y-auto"></div>
+ 
+      <div class="bg-slate-50 dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 space-y-3">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-slate-500">Total Income this cut-off</span>
+          <span id="cutoffModalIncome" class="font-bold text-emerald-600">&#8369;0.00</span>
+        </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-slate-500">&minus; Expenses</span>
+          <span id="cutoffModalExpenses" class="font-bold text-rose-600">&#8369;0.00</span>
+        </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-slate-500" id="cutoffModalSavingsLabel">&minus; Savings set aside</span>
+          <span id="cutoffModalSavings" class="font-bold text-blue-600">&#8369;0.00</span>
+        </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-slate-500">&minus; Debt payments</span>
+          <span id="cutoffModalDebtPayments" class="font-bold text-amber-600">&#8369;0.00</span>
+        </div>
+        <div class="border-t border-slate-200 dark:border-slate-700 pt-3 flex items-center justify-between">
+          <span class="text-sm font-bold">Available Balance</span>
+          <span id="cutoffModalAvailable" class="text-xl font-bold text-indigo-600">&#8369;0.00</span>
+        </div>
+        <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+          <div id="cutoffModalBar" class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p id="cutoffModalUsedNote" class="text-[11px] text-slate-400">&mdash;</p>
+      </div>
+ 
+      <div class="space-y-3">
+        <div>
+          <h4 class="text-xs font-bold uppercase text-slate-500">Income Sources This Cut-Off</h4>
+          <p class="text-xs text-slate-400 mt-1">Kasama na ang lahat ng extrang pera na naitala sa cut-off na ito.</p>
+        </div>
+        <div id="cutoffIncomeList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+      </div>
+ 
+      <div class="space-y-3">
+        <div>
+          <h4 class="text-xs font-bold uppercase text-slate-500">Cut-Off History</h4>
+          <p class="text-xs text-slate-400 mt-1">Income at available balance kada cut-off.</p>
+        </div>
+        <div id="cutoffHistoryList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+      </div>
     </div>
   </div>
-
+ 
+  
+  <div id="savingsModal" class="fixed inset-0 bg-slate-900/55 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 hidden overflow-hidden">
+    <div class="savings-modal-panel bg-white dark:bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-lg flex items-center space-x-2">
+            <i class="fa-solid fa-piggy-bank text-blue-500"></i>
+            <span>Savings Breakdown</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">See how your savings are distributed across banks and accounts.</p>
+        </div>
+        <button onclick="closeSavingsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+ 
+      <div class="savings-main-grid">
+        <div class="savings-breakdown-card bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between mb-4 gap-4">
+            <div>
+              <p class="text-xs text-slate-400">Total Savings</p>
+              <p id="savingsBreakdownTotal" class="text-2xl font-bold mt-1">&#8369;0.00</p>
+            </div>
+            <div class="text-right min-w-0">
+              <p class="text-xs text-slate-400">Largest Account</p>
+              <p id="largestSavingsAccount" class="text-sm font-bold text-blue-600 dark:text-blue-400 mt-1 truncate">&mdash;</p>
+            </div>
+          </div>
+          <div class="savings-overview-layout">
+            <div class="savings-chart-wrap">
+              <div id="savingsPieChart" class="savings-pie-chart" aria-label="Savings distribution pie chart">
+                <div class="savings-pie-center">
+                  <span id="savingsPieCenterAmount" class="text-sm font-bold text-slate-700 dark:text-slate-200">&#8369;0</span>
+                  <span class="text-[10px] text-slate-400">TOTAL</span>
+                </div>
+              </div>
+            </div>
+            <div id="savingsLegend" class="savings-legend space-y-2"></div>
+          </div>
+        </div>
+ 
+        <div class="savings-breakdown-card bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 min-w-0">
+          <div class="p-4 border-b border-slate-200 dark:border-slate-700">
+            <h4 class="text-xs font-bold uppercase text-slate-500">Savings Accounts</h4>
+            <p class="text-xs text-slate-400 mt-1">Grouped totals by bank / account.</p>
+          </div>
+          <div id="savingsAccountBreakdown" class="savings-account-list p-4 space-y-2 max-h-80 overflow-y-auto"></div>
+        </div>
+      </div>
+ 
+      <div class="space-y-3">
+        <div>
+          <h4 class="text-xs font-bold uppercase text-slate-500">Recent Savings Transactions</h4>
+          <p class="text-xs text-slate-400 mt-1">Individual savings records.</p>
+        </div>
+        <div id="savingsListContainer" class="savings-transaction-list space-y-2 max-h-72 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+ 
   
   <div id="debtModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-6 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between">
-        <h3 class="font-bold text-lg flex items-center space-x-2"><i class="fa-solid fa-file-invoice-dollar text-amber-500"></i><span>Debt Manager (Maya & Liabilities)</span></h3>
+        <h3 class="font-bold text-lg flex items-center space-x-2"><i class="fa-solid fa-file-invoice-dollar text-amber-500"></i><span>Debt Manager</span></h3>
         <button onclick="closeDebtsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
       <form onsubmit="handleDebtSubmit(event)" class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
@@ -307,10 +558,10 @@
       </div>
     </div>
   </div>
-
+ 
   
   <div id="txModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 shadow-xl space-y-4 max-h-[92vh] overflow-y-auto">
       <div class="flex items-center justify-between">
         <h3 class="font-bold text-lg">New Transaction</h3>
         <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -318,16 +569,34 @@
       <form id="txForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Type</label>
-          <select id="txType" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
-            <option value="income">Income / Salary</option>
+          <select id="txType" onchange="toggleSavingsAccountField()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+            <option value="income">Income / Salary / Extra</option>
             <option value="expense">Expense</option>
             <option value="savings">Savings</option>
             <option value="debt">Debt Payment</option>
           </select>
         </div>
+        <div id="savingsAccountField" class="hidden">
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Savings Account / Bank</label>
+          <select id="txSavingsAccount" onchange="toggleCustomSavingsAccount()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+            <option value="">Select bank / account</option>
+            <option value="RCBC">RCBC</option>
+            <option value="BDO">BDO</option>
+            <option value="BPI">BPI</option>
+            <option value="Metrobank">Metrobank</option>
+            <option value="UnionBank">UnionBank</option>
+            <option value="Security Bank">Security Bank</option>
+            <option value="PNB">PNB</option>
+            <option value="LandBank">LandBank</option>
+            <option value="Maya">Maya</option>
+            <option value="GCash / GSave">GCash / GSave</option>
+            <option value="Other">Other / Custom</option>
+          </select>
+          <input type="text" id="txSavingsAccountCustom" placeholder="Enter bank / account name" class="hidden mt-2 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+        </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Description</label>
-          <input type="text" id="txDesc" required placeholder="e.g., Grocery or Maya Payment" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+          <input type="text" id="txDesc" required placeholder="e.g., Emergency Fund" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -335,13 +604,21 @@
             <input type="text" id="txCategory" required placeholder="General" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">Amount (₱)</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Amount (&#8369;)</label>
             <input type="number" step="any" id="txAmount" required placeholder="0.00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
           </div>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Date</label>
-          <input type="date" id="txDate" required class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+          <input type="date" id="txDate" required onchange="previewTxCutoff()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+          <p id="txCutoffPreview" class="text-[11px] text-indigo-500 font-semibold mt-1">&mdash;</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Para saang cut-off ang perang ito?</label>
+          <select id="txCutoffKey" onchange="previewTxCutoff()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm">
+            <option value="">Auto &mdash; base sa Date</option>
+          </select>
+          <p class="text-[11px] text-slate-400 mt-1">Gamitin ito kapag <b>late</b> mong nailog: piliin ang cut-off na pinanggalingan ng pera, hindi ang araw ng pag-log.</p>
         </div>
         <div class="flex justify-end space-x-3 pt-2">
           <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl text-sm bg-slate-100 dark:bg-slate-700">Cancel</button>
@@ -350,1237 +627,1658 @@
       </form>
     </div>
   </div>
-
+ 
   <script>
     let globalData = {
       transactions: [],
       debts: [],
       user: { email: '', isAdmin: false }
     };
-
-    
-    
-    
+ 
     
     
     
     let aiConversationHistory = [];
     let aiIsBusy = false;
-
     const MAX_AI_HISTORY = 20;
-    const AI_STORAGE_KEY =
-      'finance_tracker_ai_conversation_v3';
-
+    const AI_STORAGE_KEY = 'finance_tracker_ai_conversation_v3';
+ 
+    let lastDataFingerprint = '';
+    let dataLoadInFlight = false;
+ 
     window.onload = function() {
       document.getElementById('txDate').valueAsDate = new Date();
-
+      restoreCutoffSelection();
       restoreAiConversation();
       syncAiConversations();
-
-      loadData();
+      toggleSavingsAccountField();
+      previewTxCutoff();
+      startReactiveSync();
+      loadData(null, { forceRender: true });
     };
-
-    function loadData(callback) {
-
-      const refreshIcon =
-        document.getElementById('refreshIcon');
-
-      if (refreshIcon) {
+ 
+    
+    
+    
+    const CUTOFF_STORAGE_KEY = 'finance_tracker_cutoff_v1';
+    
+    
+    
+ 
+    const MONTH_NAMES = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+ 
+    
+    
+    
+    let selectedCutoffKey = 'current';
+ 
+    function parseTxDate(value) {
+      const match = String(value == null ? '' : value)
+        .trim()
+        .match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+ 
+      if (!match) {
+        return null;
+      }
+ 
+      return {
+        year: Number(match[1]),
+        month: Number(match[2]),
+        day: Number(match[3])
+      };
+    }
+ 
+    function buildCutoffKey(year, month, half) {
+      return year + '-' + String(month).padStart(2, '0') + '-' + half;
+    }
+ 
+    function isValidCutoffKey(key) {
+      return /^\d{4}-\d{2}-[AB]$/.test(String(key || '').trim());
+    }
+ 
+    
+    function getCutoffKeyFromDate(value) {
+      const parts = parseTxDate(value);
+ 
+      if (!parts) {
+        return '';
+      }
+ 
+      return buildCutoffKey(
+        parts.year,
+        parts.month,
+        parts.day <= 15 ? 'A' : 'B'
+      );
+    }
+ 
+    
+    
+    
+    function getCutoffKeyForTx(tx) {
+      const override = tx && tx.cutoffKey;
+ 
+      if (isValidCutoffKey(override)) {
+        return String(override).trim();
+      }
+ 
+      return getCutoffKeyFromDate(tx && tx.date);
+    }
+ 
+    function isCutoffOverridden(tx) {
+      const override = tx && tx.cutoffKey;
+ 
+      return (
+        isValidCutoffKey(override) &&
+        String(override).trim() !== getCutoffKeyFromDate(tx && tx.date)
+      );
+    }
+ 
+    
+    function generateCutoffChoices() {
+      const keys = {};
+      const now = new Date();
+ 
+      for (let step = 0; step < 12; step++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - Math.floor(step / 2), 1);
+        keys[buildCutoffKey(d.getFullYear(), d.getMonth() + 1, 'A')] = true;
+        keys[buildCutoffKey(d.getFullYear(), d.getMonth() + 1, 'B')] = true;
+      }
+ 
+      (globalData.transactions || []).forEach(tx => {
+        const key = getCutoffKeyForTx(tx);
+        if (key) keys[key] = true;
+      });
+ 
+      return Object.keys(keys).sort().reverse();
+    }
+ 
+    function refreshTxCutoffChoices() {
+      const select = document.getElementById('txCutoffKey');
+ 
+      if (!select) {
+        return;
+      }
+ 
+      const previous = select.value;
+      let html = '<option value="">Auto \u2014 base sa Date</option>';
+ 
+      generateCutoffChoices().forEach(key => {
+        html += '<option value="' + key + '">' +
+          escapeHtml(describeCutoff(key).label) + '</option>';
+      });
+ 
+      select.innerHTML = html;
+      select.value = previous;
+    }
+ 
+    function getCurrentCutoffKey() {
+      const now = new Date();
+ 
+      return buildCutoffKey(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        now.getDate() <= 15 ? 'A' : 'B'
+      );
+    }
+ 
+    function describeCutoff(key) {
+      if (key === 'all') {
+        return {
+          label: 'All Time (Cumulative)',
+          range: 'Lahat ng naka-record na transactions'
+        };
+      }
+ 
+      const parts = String(key).split('-');
+ 
+      if (parts.length !== 3) {
+        return {
+          label: 'All Time (Cumulative)',
+          range: ''
+        };
+      }
+ 
+      const year = Number(parts[0]);
+      const month = Number(parts[1]);
+      const half = parts[2];
+      const name = MONTH_NAMES[month - 1] || '';
+      const lastDay = new Date(year, month, 0).getDate();
+ 
+      if (half === 'A') {
+        return {
+          label: name + ' 1-15, ' + year,
+          range: '1st cut-off \u00b7 ' + name + ' 1 \u2013 ' + name + ' 15, ' + year
+        };
+      }
+ 
+      return {
+        label: name + ' 16-' + lastDay + ', ' + year,
+        range: '2nd cut-off \u00b7 ' + name + ' 16 \u2013 ' + name + ' ' + lastDay + ', ' + year
+      };
+    }
+ 
+    function resolveCutoffKey() {
+      if (selectedCutoffKey === 'all') {
+        return 'all';
+      }
+ 
+      if (selectedCutoffKey === 'current') {
+        return getCurrentCutoffKey();
+      }
+ 
+      return selectedCutoffKey;
+    }
+ 
+    function filterByCutoff(transactions, key) {
+      if (key === 'all') {
+        return (transactions || []).slice();
+      }
+ 
+      return (transactions || []).filter(
+        tx => getCutoffKeyForTx(tx) === key
+      );
+    }
+ 
+    function summariseCutoff(transactions, key) {
+      const scoped = filterByCutoff(transactions, key);
+ 
+      let income = 0;
+      let expenses = 0;
+      let savings = 0;
+      let debtPayments = 0;
+ 
+      scoped.forEach(tx => {
+        const amt = Number(tx.amount) || 0;
+ 
+        if (tx.type === 'income') {
+          income += amt;
+        } else if (tx.type === 'expense') {
+          expenses += amt;
+        } else if (tx.type === 'savings') {
+          savings += amt;
+        } else if (tx.type === 'debt') {
+          debtPayments += amt;
+        }
+      });
+ 
+      return {
+        key: key,
+        transactions: scoped,
+        income: income,
+        expenses: expenses,
+        savings: savings,
+        debtPayments: debtPayments,
+        outflow: expenses + savings + debtPayments,
+        available: income - expenses - savings - debtPayments
+      };
+    }
+ 
+    function listCutoffKeys(transactions) {
+      const keys = {};
+      keys[getCurrentCutoffKey()] = true;
+ 
+      (transactions || []).forEach(tx => {
+        const key = getCutoffKeyForTx(tx);
+        if (key) {
+          keys[key] = true;
+        }
+      });
+ 
+      return Object.keys(keys).sort().reverse();
+    }
+ 
+    function refreshCutoffOptions(transactions) {
+      const select = document.getElementById('cutoffSelect');
+      const rangeLabel = document.getElementById('cutoffRangeLabel');
+      const activeKey = resolveCutoffKey();
+ 
+      if (rangeLabel) {
+        rangeLabel.textContent = describeCutoff(activeKey).range;
+      }
+ 
+      if (!select) {
+        return;
+      }
+ 
+      const currentKey = getCurrentCutoffKey();
+      let html = '';
+ 
+      listCutoffKeys(transactions).forEach(key => {
+        html += '<option value="' + key + '">' +
+          escapeHtml(describeCutoff(key).label) +
+          (key === currentKey ? ' \u2022 Current' : '') +
+          '</option>';
+      });
+ 
+      html += '<option value="all">All Time (Cumulative)</option>';
+ 
+      select.innerHTML = html;
+      select.value = selectedCutoffKey === 'all' ? 'all' : activeKey;
+    }
+ 
+    function onCutoffChange() {
+      const select = document.getElementById('cutoffSelect');
+ 
+      if (!select) {
+        return;
+      }
+ 
+      selectedCutoffKey = select.value;
+ 
+      try {
+        localStorage.setItem(CUTOFF_STORAGE_KEY, selectedCutoffKey);
+      } catch (e) {}
+ 
+      renderDashboard(globalData);
+ 
+      const cutoffModal = document.getElementById('cutoffModal');
+ 
+      if (cutoffModal && !cutoffModal.classList.contains('hidden')) {
+        renderCutoffModal();
+      }
+    }
+ 
+    function resetCutoffToCurrent() {
+      selectedCutoffKey = 'current';
+ 
+      try {
+        localStorage.setItem(CUTOFF_STORAGE_KEY, 'current');
+      } catch (e) {}
+ 
+      renderDashboard(globalData);
+ 
+      const cutoffModal = document.getElementById('cutoffModal');
+ 
+      if (cutoffModal && !cutoffModal.classList.contains('hidden')) {
+        renderCutoffModal();
+      }
+    }
+ 
+    function restoreCutoffSelection() {
+      try {
+        const saved = localStorage.getItem(CUTOFF_STORAGE_KEY);
+        if (saved) {
+          selectedCutoffKey = saved;
+        }
+      } catch (e) {}
+    }
+ 
+    function previewTxCutoff() {
+      const dateInput = document.getElementById('txDate');
+      const preview = document.getElementById('txCutoffPreview');
+ 
+      if (!dateInput || !preview) {
+        return;
+      }
+ 
+      const select = document.getElementById('txCutoffKey');
+      const override = select ? select.value : '';
+ 
+      if (isValidCutoffKey(override)) {
+        preview.textContent =
+          'Mapupunta sa cut-off: ' + describeCutoff(override).label +
+          ' (manual override)';
+        return;
+      }
+ 
+      const key = getCutoffKeyFromDate(dateInput.value);
+ 
+      if (!key) {
+        preview.textContent = '\u2014';
+        return;
+      }
+ 
+      preview.textContent =
+        'Mapupunta sa cut-off: ' + describeCutoff(key).label + ' (auto)';
+    }
+ 
+    
+    
+    
+    function getDataFingerprint(data) {
+      return JSON.stringify({
+        transactions: data && data.transactions ? data.transactions : [],
+        debts: data && data.debts ? data.debts : []
+      });
+    }
+ 
+    function setSyncStatus(message, active = true) {
+      const el = document.getElementById('syncStatus');
+ 
+      if (!el) {
+        return;
+      }
+ 
+      el.innerHTML = active
+        ? '<span class="live-sync-dot"></span> ' + escapeHtml(message)
+        : '\u2713 ' + escapeHtml(message);
+    }
+ 
+    function notifyDataChanged() {
+      try {
+        localStorage.setItem(
+          'finance_tracker_data_signal_v1',
+          String(Date.now())
+        );
+      } catch (e) {}
+    }
+ 
+    function loadData(callback, options = {}) {
+      if (dataLoadInFlight) {
+        return;
+      }
+ 
+      const silent = options.silent === true;
+      const forceRender = options.forceRender === true;
+      const refreshIcon = document.getElementById('refreshIcon');
+ 
+      dataLoadInFlight = true;
+ 
+      if (refreshIcon && !silent) {
         refreshIcon.classList.add('animate-spin');
       }
-
+ 
+      if (!silent) {
+        setSyncStatus('Syncing\u2026');
+      }
+ 
       google.script.run
-
         .withSuccessHandler(res => {
-
-          globalData =
-            res || {
-              transactions: [],
-              debts: [],
-              user: {
-                email: '',
-                isAdmin: false
-              }
-            };
-
-          renderDashboard(globalData);
-
-          if (refreshIcon) {
+          const nextData = res || {
+            transactions: [],
+            debts: [],
+            user: { email: '', isAdmin: false }
+          };
+ 
+          const nextFingerprint = getDataFingerprint(nextData);
+ 
+          const changed =
+            forceRender || nextFingerprint !== lastDataFingerprint;
+ 
+          globalData = nextData;
+ 
+          if (changed) {
+            renderDashboard(globalData);
+ 
+            const savingsModal = document.getElementById('savingsModal');
+ 
+            if (savingsModal && !savingsModal.classList.contains('hidden')) {
+              renderSavingsModalContents(false);
+            }
+ 
+            const cutoffModal = document.getElementById('cutoffModal');
+ 
+            if (cutoffModal && !cutoffModal.classList.contains('hidden')) {
+              renderCutoffModal();
+            }
+          }
+ 
+          lastDataFingerprint = nextFingerprint;
+          dataLoadInFlight = false;
+ 
+          if (refreshIcon && !silent) {
             refreshIcon.classList.remove('animate-spin');
           }
-
+ 
+          setSyncStatus('Live \u00b7 ' + new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          }), true);
+ 
           if (typeof callback === 'function') {
             callback(globalData);
           }
         })
-
         .withFailureHandler(err => {
-
-          if (refreshIcon) {
+          dataLoadInFlight = false;
+ 
+          if (refreshIcon && !silent) {
             refreshIcon.classList.remove('animate-spin');
           }
-
-          console.error(
-            'loadData error:',
-            err
-          );
-
-          alert(
-            'Hindi ma-load ang Finance Tracker data.\n\n' +
-            (
-              err &&
-              err.message
-                ? err.message
-                : 'Unknown server error.'
-            )
-          );
-
+ 
+          console.error('loadData error:', err);
+          setSyncStatus('Sync error', false);
+ 
+          if (!silent) {
+            alert(
+              'Hindi ma-load ang Finance Tracker data.\n\n' +
+              (err && err.message ? err.message : 'Unknown server error.')
+            );
+          }
+ 
           if (typeof callback === 'function') {
             callback(null, err);
           }
         })
-
         .getSheetData();
     }
-
-    function renderDashboard({
-      transactions = [],
-      debts = [],
-      user = {}
-    }) {
-
+ 
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+ 
+      const savingsModal = document.getElementById('savingsModal');
+      const debtModal = document.getElementById('debtModal');
+      const txModal = document.getElementById('txModal');
+      const splitAiModal = document.getElementById('splitAiModal');
+      const cutoffModal = document.getElementById('cutoffModal');
+ 
+      if (savingsModal && !savingsModal.classList.contains('hidden')) closeSavingsModal();
+      if (debtModal && !debtModal.classList.contains('hidden')) closeDebtsModal();
+      if (txModal && !txModal.classList.contains('hidden')) closeModal();
+      if (splitAiModal && !splitAiModal.classList.contains('hidden')) closeSplitScreenAI();
+      if (cutoffModal && !cutoffModal.classList.contains('hidden')) closeCutoffModal();
+    });
+ 
+    function startReactiveSync() {
+      setInterval(() => {
+        if (!document.hidden) {
+          loadData(null, { silent: true });
+        }
+      }, 15000);
+ 
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          loadData(null, { silent: true, forceRender: true });
+        }
+      });
+ 
+      window.addEventListener('storage', event => {
+        if (
+          event.key === 'finance_tracker_data_signal_v1' &&
+          !document.hidden
+        ) {
+          loadData(null, { silent: true, forceRender: true });
+        }
+      });
+    }
+ 
+    
+    
+    
+    function renderDashboard(data) {
+      const allTransactions =
+        (data && data.transactions) ? data.transactions : [];
+      const debts = (data && data.debts) ? data.debts : [];
+      const user = (data && data.user) ? data.user : {};
+ 
       if (user && user.email) {
-
-        document.getElementById(
-          'userEmailTag'
-        ).textContent =
-          user.email +
-          (user.isAdmin ? " (Admin)" : "");
-
+        document.getElementById('userEmailTag').textContent =
+          user.email + (user.isAdmin ? ' (Admin)' : '');
+ 
         if (user.isAdmin) {
-          document.getElementById(
-            'adminGitHubPanel'
-          ).classList.remove('hidden');
+          document.getElementById('adminGitHubPanel').classList.remove('hidden');
         } else {
-          document.getElementById(
-            'adminGitHubPanel'
-          ).classList.add('hidden');
+          document.getElementById('adminGitHubPanel').classList.add('hidden');
         }
       }
-
-      let income = 0;
-      let expenses = 0;
-      let savings = 0;
-      let totalDebtAmount = 0;
-
-      transactions.forEach(tx => {
-
-        const amt =
-          Number(tx.amount) || 0;
-
-        if (tx.type === 'income') {
-          income += amt;
-
-        } else if (tx.type === 'expense') {
-          expenses += amt;
-
-        } else if (tx.type === 'savings') {
-          savings += amt;
+ 
+      
+      
+      
+      refreshCutoffOptions(allTransactions);
+      refreshTxCutoffChoices();
+ 
+      const activeCutoffKey = resolveCutoffKey();
+      const info = describeCutoff(activeCutoffKey);
+      const summary = summariseCutoff(allTransactions, activeCutoffKey);
+ 
+      
+      
+      
+      let lifetimeSavings = 0;
+ 
+      allTransactions.forEach(tx => {
+        if (tx.type === 'savings') {
+          lifetimeSavings += Number(tx.amount) || 0;
         }
       });
-
+ 
+      let totalDebtAmount = 0;
+ 
       debts.forEach(debt => {
-        totalDebtAmount +=
-          Number(debt.remainingAmount) || 0;
+        totalDebtAmount += Number(debt.remainingAmount) || 0;
       });
-
-      const debtProgress =
-        calculateDebtProgress(debts);
-
-      document.getElementById(
-        'totalIncome'
-      ).textContent =
-        formatCurrency(income);
-
-      document.getElementById(
-        'totalExpenses'
-      ).textContent =
-        formatCurrency(expenses);
-
-      document.getElementById(
-        'totalSavings'
-      ).textContent =
-        formatCurrency(savings);
-
-      document.getElementById(
-        'totalDebts'
-      ).textContent =
-        formatCurrency(totalDebtAmount);
-
-      document.getElementById(
-        'debtBar'
-      ).style.width =
-        debtProgress + '%';
-
-      const netCash =
-        income - expenses;
-
-      document.getElementById(
-        'splitNetCash'
-      ).textContent =
-        formatCurrency(netCash);
-
-      document.getElementById(
-        'splitDebtProgressText'
-      ).textContent =
-        Math.round(debtProgress) +
-        '% Paid';
-
-      const incomeRatio =
-        income > 0
-          ? Math.min(
-              Math.round(
-                (expenses / income) * 100
-              ),
-              100
-            )
-          : 0;
-
-      document.getElementById(
-        'incomeRatioVal'
-      ).textContent =
-        incomeRatio + '%';
-
-      document.getElementById(
-        'incomeBarGraph'
-      ).style.width =
-        incomeRatio + '%';
-
-      const debtRatio =
-        income > 0
-          ? Math.min(
-              Math.round(
-                (totalDebtAmount / income) * 100
-              ),
-              100
-            )
-          : 0;
-
-      document.getElementById(
-        'debtRatioVal'
-      ).textContent =
-        debtRatio + '%';
-
-      document.getElementById(
-        'debtRatioBar'
-      ).style.width =
-        debtRatio + '%';
-
-      renderTable(transactions);
-
+ 
+      const debtProgress = calculateDebtProgress(debts);
+ 
       
-      const debtModal =
-        document.getElementById('debtModal');
-
-      if (
-        debtModal &&
-        !debtModal.classList.contains('hidden')
-      ) {
+      
+      
+      document.getElementById('totalIncome').textContent =
+        formatCurrency(summary.income);
+ 
+      document.getElementById('totalExpenses').textContent =
+        formatCurrency(summary.expenses);
+ 
+      document.getElementById('totalSavings').textContent =
+        formatCurrency(lifetimeSavings);
+ 
+      document.getElementById('totalDebts').textContent =
+        formatCurrency(totalDebtAmount);
+ 
+      const incomeNote = document.getElementById('incomeCutoffNote');
+      const expenseNote = document.getElementById('expenseCutoffNote');
+ 
+      if (incomeNote) {
+        incomeNote.textContent = info.label;
+      }
+ 
+      if (expenseNote) {
+        expenseNote.textContent = info.label;
+      }
+ 
+      const availableEl = document.getElementById('availableBalance');
+      const availableNote = document.getElementById('availableBalanceNote');
+ 
+      if (availableEl) {
+        availableEl.textContent = formatCurrency(summary.available);
+        availableEl.className =
+          'text-2xl font-bold ' +
+          (summary.available < 0 ? 'text-rose-600' : 'text-indigo-600');
+      }
+ 
+      if (availableNote) {
+        const formula = 'Income \u2212 Expenses \u2212 Savings \u2212 Debt';
+ 
+        availableNote.textContent =
+          (summary.available < 0
+            ? 'Over-budget na sa cut-off na ito \u00b7 '
+            : 'Pwede pang gastusin \u00b7 ') +
+          info.label + ' \u00b7 ' + formula;
+      }
+ 
+      document.getElementById('debtBar').style.width = debtProgress + '%';
+ 
+      const tableScope = document.getElementById('tableScopeLabel');
+ 
+      if (tableScope) {
+        tableScope.textContent =
+          info.label + ' \u00b7 ' + summary.transactions.length + ' record(s)';
+      }
+ 
+      
+      
+      
+      document.getElementById('splitNetCash').textContent =
+        formatCurrency(summary.income - summary.expenses);
+ 
+      document.getElementById('splitDebtProgressText').textContent =
+        Math.round(debtProgress) + '% Paid';
+ 
+      const incomeRatio =
+        summary.income > 0
+          ? Math.min(Math.round((summary.expenses / summary.income) * 100), 100)
+          : 0;
+ 
+      document.getElementById('incomeRatioVal').textContent = incomeRatio + '%';
+      document.getElementById('incomeBarGraph').style.width = incomeRatio + '%';
+ 
+      const debtRatio =
+        summary.income > 0
+          ? Math.min(Math.round((totalDebtAmount / summary.income) * 100), 100)
+          : 0;
+ 
+      document.getElementById('debtRatioVal').textContent = debtRatio + '%';
+      document.getElementById('debtRatioBar').style.width = debtRatio + '%';
+ 
+      
+      
+      
+      renderTable(summary.transactions);
+ 
+      const debtModal = document.getElementById('debtModal');
+ 
+      if (debtModal && !debtModal.classList.contains('hidden')) {
         renderDebtList();
       }
     }
-
-    
-    
-    
+ 
     function calculateDebtProgress(debts = []) {
-
       let totalInitial = 0;
       let totalRemaining = 0;
-
+ 
       debts.forEach(debt => {
-
-        totalInitial +=
-          Number(debt.initialAmount) || 0;
-
-        totalRemaining +=
-          Number(debt.remainingAmount) || 0;
+        totalInitial += Number(debt.initialAmount) || 0;
+        totalRemaining += Number(debt.remainingAmount) || 0;
       });
-
+ 
       if (totalInitial <= 0) {
         return 0;
       }
-
+ 
       return Math.min(
-        Math.max(
-          (
-            (totalInitial - totalRemaining) /
-            totalInitial
-          ) * 100,
-          0
-        ),
+        Math.max(((totalInitial - totalRemaining) / totalInitial) * 100, 0),
         100
       );
     }
-
+ 
     function renderTable(transactions) {
       const tbody = document.getElementById('transactionTableBody');
       tbody.innerHTML = '';
-      if (transactions.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No transactions recorded yet.</td></tr>`;
+ 
+      if (!transactions || transactions.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" class="text-center py-6 text-slate-400">Walang transactions sa cut-off na ito.</td></tr>';
         return;
       }
+ 
       [...transactions].reverse().forEach(tx => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-900/30 transition";
+        tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-900/30 transition';
+ 
+        const overridden = isCutoffOverridden(tx);
+ 
         tr.innerHTML = `
-          <td class="py-3 px-6 text-slate-500">${tx.date}</td>
-          <td class="py-3 px-6 font-medium">${tx.description}</td>
-          <td class="py-3 px-6"><span class="px-2.5 py-1 rounded-full text-xs font-semibold uppercase bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${tx.type}</span></td>
-          <td class="py-3 px-6 text-slate-500">${tx.category}</td>
-          <td class="py-3 px-6 text-right font-bold">₱${Number(tx.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-          <td class="py-3 px-6 text-center"><button onclick="deleteRow('${tx.id}')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button></td>
+          <td class="py-3 px-6 text-slate-500">
+            ${escapeHtml(tx.date)}
+            ${overridden ? '<span class="ml-1 px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 text-[10px] font-bold align-middle" title="Naka-assign sa ibang cut-off">CUT-OFF SET</span>' : ''}
+          </td>
+          <td class="py-3 px-6 font-medium">${escapeHtml(tx.description)}</td>
+          <td class="py-3 px-6"><span class="px-2.5 py-1 rounded-full text-xs font-semibold uppercase bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${escapeHtml(tx.type)}</span></td>
+          <td class="py-3 px-6 text-slate-500">${escapeHtml(tx.category)}</td>
+          <td class="py-3 px-6 text-right font-bold">${formatCurrency(tx.amount)}</td>
+          <td class="py-3 px-6 text-center whitespace-nowrap">
+            <button onclick="reassignCutoff('${escapeJsString(tx.id)}')" title="Baguhin ang cut-off ng transaction na ito" class="text-slate-400 hover:text-indigo-600 mr-3"><i class="fa-solid fa-calendar-days"></i></button>
+            <button onclick="deleteRow('${escapeJsString(tx.id)}')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash-can"></i></button>
+          </td>
         `;
+ 
         tbody.appendChild(tr);
       });
     }
-
-    function toggleAiPopup() {
-
-      const popup =
-        document.getElementById(
-          'aiPopupModal'
-        );
-
-      popup.classList.toggle(
-        'hidden'
-      );
-
-      if (!popup.classList.contains('hidden')) {
-
-        syncAiConversations();
-
-        setTimeout(() => {
-          const input =
-            document.getElementById(
-              'popupChatInput'
-            );
-
-          if (input) {
-            input.focus();
-          }
-        }, 50);
-      }
-    }
-
+ 
     // ==========================================================
     
     
-    function openSplitScreenAI() {
-
-      document.getElementById(
-        'aiPopupModal'
-      ).classList.add('hidden');
-
-      document.getElementById(
-        'splitAiModal'
-      ).classList.remove('hidden');
-
-      
-      syncAiConversations();
-
-      
-      renderDashboard(globalData);
-
-      getInitialAiAdvice();
-
-      setTimeout(() => {
-
-        const container =
-          document.getElementById(
-            'splitChatMessages'
-          );
-
-        if (container) {
-          container.scrollTop =
-            container.scrollHeight;
-        }
-
-        const input =
-          document.getElementById(
-            'splitChatInput'
-          );
-
-        if (input) {
-          input.focus();
-        }
-
-      }, 50);
-    }
-
-    
-    
-    
-    function closeSplitScreenAI() {
-
-      saveAiConversation();
-
-      document.getElementById(
-        'splitAiModal'
-      ).classList.add('hidden');
-
-      document.getElementById(
-        'aiPopupModal'
-      ).classList.remove('hidden');
-
-      syncAiConversations();
-
-      setTimeout(() => {
-
-        const container =
-          document.getElementById(
-            'popupChatMessages'
-          );
-
-        if (container) {
-          container.scrollTop =
-            container.scrollHeight;
-        }
-
-        const input =
-          document.getElementById(
-            'popupChatInput'
-          );
-
-        if (input) {
-          input.focus();
-        }
-
-      }, 50);
-    }
-
-    
-    
-    
-    function restoreAiConversation() {
-
-      try {
-
-        const saved =
-          localStorage.getItem(
-            AI_STORAGE_KEY
-          );
-
-        if (!saved) {
-          aiConversationHistory = [];
-          return;
-        }
-
-        const parsed =
-          JSON.parse(saved);
-
-        if (!Array.isArray(parsed)) {
-          aiConversationHistory = [];
-          return;
-        }
-
-        aiConversationHistory =
-          parsed
-            .filter(message =>
-              message &&
-              (
-                message.role === 'user' ||
-                message.role === 'assistant'
-              ) &&
-              message.text
-            )
-            .slice(-MAX_AI_HISTORY);
-
-      } catch (e) {
-
-        console.warn(
-          'Unable to restore AI conversation:',
-          e
-        );
-
-        aiConversationHistory = [];
-      }
-    }
-
-    function saveAiConversation() {
-
-      try {
-
-        localStorage.setItem(
-          AI_STORAGE_KEY,
-          JSON.stringify(
-            aiConversationHistory.slice(
-              -MAX_AI_HISTORY
-            )
-          )
-        );
-
-      } catch (e) {
-
-        console.warn(
-          'Unable to save AI conversation:',
-          e
-        );
-      }
-    }
-
-    
-    
-    
-    function addAiMessage(
-      role,
-      text
-    ) {
-
-      aiConversationHistory.push({
-        role: role,
-        text: String(text)
-      });
-
-      if (
-        aiConversationHistory.length >
-        MAX_AI_HISTORY
-      ) {
-
-        aiConversationHistory =
-          aiConversationHistory.slice(
-            -MAX_AI_HISTORY
-          );
-      }
-
-      saveAiConversation();
-    }
-
-    function renderConversationToContainer(
-      container
-    ) {
-
-      if (!container) {
+    function openCutoffModal() {
+      const modal = document.getElementById('cutoffModal');
+ 
+      if (!modal) {
         return;
       }
-
-      container.innerHTML = '';
-
-      if (
-        aiConversationHistory.length === 0
-      ) {
-
-        container.innerHTML = `
-          <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 max-w-[85%]">
-            Hello John Ray! Nandito ako sa iyong AI Financial Assistant. Magtanong ka tungkol sa budget, expenses, savings, cashflow, o debts mo.
-          </div>
-        `;
-
+ 
+      renderCutoffModal();
+      modal.classList.remove('hidden');
+    }
+ 
+    function closeCutoffModal() {
+      document.getElementById('cutoffModal').classList.add('hidden');
+    }
+ 
+    function renderCutoffModal() {
+      const allTransactions = globalData.transactions || [];
+      const activeKey = resolveCutoffKey();
+      const info = describeCutoff(activeKey);
+      const summary = summariseCutoff(allTransactions, activeKey);
+ 
+      document.getElementById('cutoffModalRange').textContent =
+        info.label + ' \u00b7 ' + info.range;
+ 
+      document.getElementById('cutoffModalIncome').textContent =
+        formatCurrency(summary.income);
+ 
+      document.getElementById('cutoffModalExpenses').textContent =
+        formatCurrency(summary.expenses);
+ 
+      document.getElementById('cutoffModalSavings').textContent =
+        formatCurrency(summary.savings);
+ 
+      document.getElementById('cutoffModalDebtPayments').textContent =
+        formatCurrency(summary.debtPayments);
+ 
+      const availableEl = document.getElementById('cutoffModalAvailable');
+      availableEl.textContent = formatCurrency(summary.available);
+      availableEl.className =
+        'text-xl font-bold ' +
+        (summary.available < 0 ? 'text-rose-600' : 'text-indigo-600');
+ 
+      const usedPercent =
+        summary.income > 0
+          ? Math.min(Math.round((summary.outflow / summary.income) * 100), 100)
+          : 0;
+ 
+      document.getElementById('cutoffModalBar').style.width = usedPercent + '%';
+ 
+      document.getElementById('cutoffModalUsedNote').textContent =
+        summary.income > 0
+          ? usedPercent + '% ng income ng cut-off na ito ay nagalaw na (expenses + savings + debt payments).'
+          : 'Wala pang naitalang income sa cut-off na ito.';
+ 
+      
+      
+      
+      const incomeList = document.getElementById('cutoffIncomeList');
+      const incomeRows = summary.transactions.filter(tx => tx.type === 'income');
+ 
+      incomeList.innerHTML = '';
+ 
+      if (incomeRows.length === 0) {
+        incomeList.innerHTML =
+          '<p class="text-xs text-slate-400 py-4 text-center">Wala pang income na naitala sa cut-off na ito.</p>';
       } else {
-
-        aiConversationHistory.forEach(
-          message => {
-
-            if (
-              message.role === 'user'
-            ) {
-
-              container.innerHTML += `
-                <div class="bg-indigo-50 dark:bg-indigo-950 p-3 rounded-2xl ml-auto max-w-[85%] text-slate-800 dark:text-slate-200">
-                  <b>Ikaw:</b><br>
-                  ${escapeHtml(message.text)}
-                </div>
-              `;
-
-            } else {
-
-              container.innerHTML += `
-                <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 space-y-1 max-w-[90%]">
-                  <b>Gemini AI:</b><br>
-                  ${formatAiText(message.text)}
-                </div>
-              `;
-            }
-          }
-        );
-      }
-
-      container.scrollTop =
-        container.scrollHeight;
-    }
-
-    function syncAiConversations() {
-
-      renderConversationToContainer(
-        document.getElementById(
-          'popupChatMessages'
-        )
-      );
-
-      renderConversationToContainer(
-        document.getElementById(
-          'splitChatMessages'
-        )
-      );
-    }
-
-    // ==========================================================
-    
-    
-    function sendPopupAI() {
-      sendAiMessage('popup');
-    }
-
-    
-    
-    
-    function sendSplitAI() {
-      sendAiMessage('split');
-    }
-
-    
-    
-    
-    function sendAiMessage(
-      source
-    ) {
-
-      if (aiIsBusy) {
-        return;
-      }
-
-      const inputId =
-        source === 'split'
-          ? 'splitChatInput'
-          : 'popupChatInput';
-
-      const containerId =
-        source === 'split'
-          ? 'splitChatMessages'
-          : 'popupChatMessages';
-
-      const input =
-        document.getElementById(
-          inputId
-        );
-
-      const container =
-        document.getElementById(
-          containerId
-        );
-
-      if (!input || !container) {
-        return;
-      }
-
-      const prompt =
-        input.value.trim();
-
-      if (!prompt) {
-        return;
-      }
-
-      aiIsBusy = true;
-
-      
-      const previousHistory =
-        aiConversationHistory.slice(
-          -MAX_AI_HISTORY
-        );
-
-      addAiMessage(
-        'user',
-        prompt
-      );
-
-      syncAiConversations();
-
-      input.value = '';
-
-      const loadId =
-        'load_ai_' +
-        Date.now();
-
-      container.innerHTML += `
-        <div
-          id="${loadId}"
-          class="bg-slate-100 dark:bg-slate-900 p-3 rounded-2xl text-slate-400 italic"
-        >
-          ${
-            source === 'split'
-              ? 'Binubuo ni Gemini ang sagot at insights...'
-              : 'Nag-iisip si Gemini...'
-          }
-        </div>
-      `;
-
-      container.scrollTop =
-        container.scrollHeight;
-
-      google.script.run
-
-        .withSuccessHandler(
-          res => {
-
-            const loader =
-              document.getElementById(
-                loadId
-              );
-
-            if (loader) {
-              loader.remove();
-            }
-
-            addAiMessage(
-              'assistant',
-              res
-            );
-
-            syncAiConversations();
-
-            if (
-              source === 'split'
-            ) {
-
-              const advice =
-                document.getElementById(
-                  'aiStrategicAdviceText'
-                );
-
-              if (advice) {
-                advice.textContent =
-                  res;
-              }
-            }
-
-            aiIsBusy = false;
-          }
-        )
-
-        .withFailureHandler(
-          err => {
-
-            const loader =
-              document.getElementById(
-                loadId
-              );
-
-            if (loader) {
-              loader.remove();
-            }
-
-            const errorMessage =
-              'Sorry, nagkaroon ng error: ' +
-              (
-                err &&
-                err.message
-                  ? err.message
-                  : 'Unknown error'
-              );
-
-            addAiMessage(
-              'assistant',
-              errorMessage
-            );
-
-            syncAiConversations();
-
-            aiIsBusy = false;
-          }
-        )
-
-        .askGeminiAI(
-          prompt,
-          globalData,
-          previousHistory
-        );
-    }
-
-    // ==========================================================
-    
-    
-    function getInitialAiAdvice() {
-
-      google.script.run
-
-        .withSuccessHandler(
-          res => {
-
-            const advice =
-              document.getElementById(
-                'aiStrategicAdviceText'
-              );
-
-            if (advice) {
-              advice.textContent =
-                res;
-            }
-          }
-        )
-
-        .withFailureHandler(
-          err => {
-
-            const advice =
-              document.getElementById(
-                'aiStrategicAdviceText'
-              );
-
-            if (advice) {
-
-              advice.textContent =
-                'Unable to load AI strategic advice: ' +
-                (
-                  err &&
-                  err.message
-                    ? err.message
-                    : 'Unknown error'
-                );
-            }
-          }
-        )
-
-        .askGeminiAI(
-          'Magbigay ng maikling strategic financial summary para sa aking kasalukuyang budget, cashflow, savings, at debts.',
-          globalData,
-          aiConversationHistory.slice(
-            -MAX_AI_HISTORY
-          )
-        );
-    }
-
-    function triggerGitHubBackup() {
-      const branch = document.getElementById('gitBranch').value;
-      const fileName = document.getElementById('gitFile').value;
-      const btn = document.getElementById('syncBtn');
-      
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Syncing ${fileName} to ${branch}...</span>`;
-
-      google.script.run
-        .withSuccessHandler(res => {
-          alert(res.message);
-          btn.disabled = false;
-          btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span>Push Full Code to GitHub</span>`;
-        })
-        .withFailureHandler(err => {
-          alert("Error: " + err.message);
-          btn.disabled = false;
-          btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span>Push Full Code to GitHub</span>`;
-        })
-        .backupCodeToGitHub(branch, fileName);
-    }
-
-    function openSavingsModal() {
-      const modal = document.getElementById('savingsModal');
-      const container = document.getElementById('savingsListContainer');
-      container.innerHTML = '';
-      
-      const savingsTx = globalData.transactions.filter(t => t.type === 'savings');
-      if (savingsTx.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 py-3 text-center">Walang pang naka-log na savings transactions.</p>`;
-      } else {
-        savingsTx.forEach(s => {
-          container.innerHTML += `
-            <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm">
-              <div>
-                <p class="font-medium">${escapeHtml(s.description)}</p>
-                <span class="text-xs text-slate-400">${s.date} • ${s.category}</span>
+        [...incomeRows].reverse().forEach(tx => {
+          incomeList.innerHTML += `
+            <div class="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm border border-slate-200 dark:border-slate-700">
+              <div class="min-w-0">
+                <p class="font-semibold truncate">${escapeHtml(tx.description)}</p>
+                <span class="text-xs text-slate-400">${escapeHtml(tx.date)} \u00b7 ${escapeHtml(tx.category)}</span>
               </div>
-              <span class="font-bold text-blue-600">₱${Number(s.amount).toLocaleString()}</span>
+              <span class="font-bold text-emerald-600 whitespace-nowrap">${formatCurrency(tx.amount)}</span>
             </div>
           `;
         });
       }
+ 
+      // ------------------------------------------------------
+      
+      
+      const historyList = document.getElementById('cutoffHistoryList');
+      historyList.innerHTML = '';
+ 
+      const keys = listCutoffKeys(allTransactions);
+ 
+      if (keys.length === 0) {
+        historyList.innerHTML =
+          '<p class="text-xs text-slate-400 py-4 text-center">Walang cut-off history.</p>';
+        return;
+      }
+ 
+      keys.forEach(key => {
+        const row = summariseCutoff(allTransactions, key);
+        const isActive = key === activeKey;
+ 
+        historyList.innerHTML += `
+          <div class="p-3 rounded-xl border text-sm ${isActive ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'}">
+            <div class="flex items-center justify-between gap-3">
+              <span class="font-semibold truncate">${escapeHtml(describeCutoff(key).label)}</span>
+              <span class="text-xs text-slate-400 whitespace-nowrap">${row.transactions.length} record(s)</span>
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span class="text-slate-400 block">Income</span>
+                <span class="font-bold text-emerald-600">${formatCurrency(row.income)}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-slate-400 block">Available</span>
+                <span class="font-bold ${row.available < 0 ? 'text-rose-600' : 'text-indigo-600'}">${formatCurrency(row.available)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+ 
+    // ==========================================================
+    
+    
+    function toggleAiPopup() {
+      const popup = document.getElementById('aiPopupModal');
+      popup.classList.toggle('hidden');
+ 
+      if (!popup.classList.contains('hidden')) {
+        syncAiConversations();
+ 
+        setTimeout(() => {
+          const input = document.getElementById('popupChatInput');
+          if (input) input.focus();
+        }, 50);
+      }
+    }
+ 
+    function openSplitScreenAI() {
+      document.getElementById('aiPopupModal').classList.add('hidden');
+      document.getElementById('splitAiModal').classList.remove('hidden');
+ 
+      syncAiConversations();
+      renderDashboard(globalData);
+      getInitialAiAdvice();
+ 
+      setTimeout(() => {
+        const container = document.getElementById('splitChatMessages');
+        if (container) container.scrollTop = container.scrollHeight;
+ 
+        const input = document.getElementById('splitChatInput');
+        if (input) input.focus();
+      }, 50);
+    }
+ 
+    function closeSplitScreenAI() {
+      saveAiConversation();
+      document.getElementById('splitAiModal').classList.add('hidden');
+      document.getElementById('aiPopupModal').classList.remove('hidden');
+      syncAiConversations();
+ 
+      setTimeout(() => {
+        const container = document.getElementById('popupChatMessages');
+        if (container) container.scrollTop = container.scrollHeight;
+ 
+        const input = document.getElementById('popupChatInput');
+        if (input) input.focus();
+      }, 50);
+    }
+ 
+    function restoreAiConversation() {
+      try {
+        const saved = localStorage.getItem(AI_STORAGE_KEY);
+ 
+        if (!saved) {
+          aiConversationHistory = [];
+          return;
+        }
+ 
+        const parsed = JSON.parse(saved);
+ 
+        if (!Array.isArray(parsed)) {
+          aiConversationHistory = [];
+          return;
+        }
+ 
+        aiConversationHistory = parsed
+          .filter(message =>
+            message &&
+            (message.role === 'user' || message.role === 'assistant') &&
+            message.text
+          )
+          .slice(-MAX_AI_HISTORY);
+      } catch (e) {
+        console.warn('Unable to restore AI conversation:', e);
+        aiConversationHistory = [];
+      }
+    }
+ 
+    function saveAiConversation() {
+      try {
+        localStorage.setItem(
+          AI_STORAGE_KEY,
+          JSON.stringify(aiConversationHistory.slice(-MAX_AI_HISTORY))
+        );
+      } catch (e) {
+        console.warn('Unable to save AI conversation:', e);
+      }
+    }
+ 
+    function addAiMessage(role, text) {
+      aiConversationHistory.push({
+        role: role,
+        text: String(text)
+      });
+ 
+      if (aiConversationHistory.length > MAX_AI_HISTORY) {
+        aiConversationHistory = aiConversationHistory.slice(-MAX_AI_HISTORY);
+      }
+ 
+      saveAiConversation();
+    }
+ 
+    function renderConversationToContainer(container) {
+      if (!container) {
+        return;
+      }
+ 
+      container.innerHTML = '';
+ 
+      if (aiConversationHistory.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 max-w-[85%]">
+            Hello John Ray! Magtanong ka tungkol sa budget, expenses, savings, cashflow, cut-off, o debts mo.
+          </div>
+        `;
+      } else {
+        aiConversationHistory.forEach(message => {
+          if (message.role === 'user') {
+            container.innerHTML += `
+              <div class="bg-indigo-50 dark:bg-indigo-950 p-3 rounded-2xl ml-auto max-w-[85%] text-slate-800 dark:text-slate-200">
+                <b>Ikaw:</b><br>
+                ${escapeHtml(message.text)}
+              </div>
+            `;
+          } else {
+            container.innerHTML += `
+              <div class="bg-slate-100 dark:bg-slate-900 p-3.5 rounded-2xl text-slate-700 dark:text-slate-300 space-y-1 max-w-[90%]">
+                <b>Gemini AI:</b><br>
+                ${formatAiText(message.text)}
+              </div>
+            `;
+          }
+        });
+      }
+ 
+      container.scrollTop = container.scrollHeight;
+    }
+ 
+    function syncAiConversations() {
+      renderConversationToContainer(document.getElementById('popupChatMessages'));
+      renderConversationToContainer(document.getElementById('splitChatMessages'));
+    }
+ 
+    function sendPopupAI() {
+      sendAiMessage('popup');
+    }
+ 
+    function sendSplitAI() {
+      sendAiMessage('split');
+    }
+ 
+    // Gives Gemini the cut-off context on top of the raw records.
+    function buildAiContext() {
+      const allTransactions = globalData.transactions || [];
+      const activeKey = resolveCutoffKey();
+      const summary = summariseCutoff(allTransactions, activeKey);
+ 
+      return {
+        transactions: allTransactions,
+        debts: globalData.debts || [],
+        cutoff: {
+          label: describeCutoff(activeKey).label,
+          range: describeCutoff(activeKey).range,
+          income: summary.income,
+          expenses: summary.expenses,
+          savings: summary.savings,
+          debtPayments: summary.debtPayments,
+          availableBalance: summary.available
+        }
+      };
+    }
+ 
+    function sendAiMessage(source) {
+      if (aiIsBusy) {
+        return;
+      }
+ 
+      const inputId = source === 'split' ? 'splitChatInput' : 'popupChatInput';
+      const containerId = source === 'split' ? 'splitChatMessages' : 'popupChatMessages';
+ 
+      const input = document.getElementById(inputId);
+      const container = document.getElementById(containerId);
+ 
+      if (!input || !container) {
+        return;
+      }
+ 
+      const prompt = input.value.trim();
+ 
+      if (!prompt) {
+        return;
+      }
+ 
+      aiIsBusy = true;
+ 
+      const previousHistory = aiConversationHistory.slice(-MAX_AI_HISTORY);
+ 
+      addAiMessage('user', prompt);
+      syncAiConversations();
+      input.value = '';
+ 
+      const loadId = 'load_ai_' + Date.now();
+ 
+      container.innerHTML += `
+        <div id="${loadId}" class="bg-slate-100 dark:bg-slate-900 p-3 rounded-2xl text-slate-400 italic">
+          ${source === 'split' ? 'Binubuo ni Gemini ang sagot at insights...' : 'Nag-iisip si Gemini...'}
+        </div>
+      `;
+ 
+      container.scrollTop = container.scrollHeight;
+ 
+      google.script.run
+        .withSuccessHandler(res => {
+          const loader = document.getElementById(loadId);
+          if (loader) loader.remove();
+ 
+          addAiMessage('assistant', res);
+          syncAiConversations();
+ 
+          if (source === 'split') {
+            const advice = document.getElementById('aiStrategicAdviceText');
+            if (advice) advice.textContent = res;
+          }
+ 
+          aiIsBusy = false;
+        })
+        .withFailureHandler(err => {
+          const loader = document.getElementById(loadId);
+          if (loader) loader.remove();
+ 
+          addAiMessage(
+            'assistant',
+            'Sorry, nagkaroon ng error: ' +
+            (err && err.message ? err.message : 'Unknown error')
+          );
+ 
+          syncAiConversations();
+          aiIsBusy = false;
+        })
+        .askGeminiAI(prompt, buildAiContext(), previousHistory);
+    }
+ 
+    function getInitialAiAdvice() {
+      google.script.run
+        .withSuccessHandler(res => {
+          const advice = document.getElementById('aiStrategicAdviceText');
+          if (advice) advice.textContent = res;
+        })
+        .withFailureHandler(err => {
+          const advice = document.getElementById('aiStrategicAdviceText');
+          if (advice) {
+            advice.textContent =
+              'Unable to load AI strategic advice: ' +
+              (err && err.message ? err.message : 'Unknown error');
+          }
+        })
+        .askGeminiAI(
+          'Magbigay ng maikling strategic financial summary para sa aking kasalukuyang cut-off: income, available balance, expenses, savings, at debts.',
+          buildAiContext(),
+          aiConversationHistory.slice(-MAX_AI_HISTORY)
+        );
+    }
+ 
+    function triggerGitHubBackup() {
+      const branch = document.getElementById('gitBranch').value;
+      const fileName = document.getElementById('gitFile').value;
+      const btn = document.getElementById('syncBtn');
+ 
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Syncing ${escapeHtml(fileName)} to ${escapeHtml(branch)}...</span>`;
+ 
+      google.script.run
+        .withSuccessHandler(res => {
+          alert(res.message);
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i><span>Push Full Code to GitHub</span>';
+        })
+        .withFailureHandler(err => {
+          alert('Error: ' + (err && err.message ? err.message : 'Unknown error'));
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i><span>Push Full Code to GitHub</span>';
+        })
+        .backupCodeToGitHub(branch, fileName);
+    }
+ 
+    // ==========================================================
+    
+    
+    function toggleSavingsAccountField() {
+      const type = document.getElementById('txType').value;
+      const field = document.getElementById('savingsAccountField');
+ 
+      if (type === 'savings') {
+        field.classList.remove('hidden');
+      } else {
+        field.classList.add('hidden');
+        document.getElementById('txSavingsAccount').value = '';
+        document.getElementById('txSavingsAccountCustom').value = '';
+        document.getElementById('txSavingsAccountCustom').classList.add('hidden');
+      }
+    }
+ 
+    function toggleCustomSavingsAccount() {
+      const select = document.getElementById('txSavingsAccount');
+      const custom = document.getElementById('txSavingsAccountCustom');
+ 
+      if (select.value === 'Other') {
+        custom.classList.remove('hidden');
+        custom.focus();
+      } else {
+        custom.classList.add('hidden');
+        custom.value = '';
+      }
+    }
+ 
+    function getSelectedSavingsAccount() {
+      const select = document.getElementById('txSavingsAccount');
+      const custom = document.getElementById('txSavingsAccountCustom');
+ 
+      if (select.value === 'Other') {
+        return custom.value.trim();
+      }
+ 
+      return select.value.trim();
+    }
+ 
+    
+    
+    
+    const SAVINGS_CHART_COLORS = [
+      '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444',
+      '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#64748B'
+    ];
+ 
+    function getSavingsAccountName(transaction) {
+      const explicitAccount = String(transaction.savingsAccount || '').trim();
+ 
+      if (explicitAccount) {
+        return explicitAccount;
+      }
+ 
+      const legacyDescription = String(transaction.description || '').trim();
+ 
+      return legacyDescription || 'Unspecified';
+    }
+ 
+    function buildSavingsBreakdown() {
+      const savingsTransactions =
+        (globalData.transactions || []).filter(t => t.type === 'savings');
+ 
+      const grouped = {};
+ 
+      savingsTransactions.forEach(transaction => {
+        const account = getSavingsAccountName(transaction);
+        const amount = Number(transaction.amount) || 0;
+ 
+        if (!grouped[account]) {
+          grouped[account] = 0;
+        }
+ 
+        grouped[account] += amount;
+      });
+ 
+      return Object.entries(grouped)
+        .map(([account, amount]) => ({ account: account, amount: amount }))
+        .sort((a, b) => b.amount - a.amount);
+    }
+ 
+    function renderSavingsPieChart(breakdown) {
+      const chart = document.getElementById('savingsPieChart');
+      const legend = document.getElementById('savingsLegend');
+      const accountBreakdown = document.getElementById('savingsAccountBreakdown');
+ 
+      const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+ 
+      document.getElementById('savingsBreakdownTotal').textContent =
+        formatCurrency(total);
+ 
+      document.getElementById('savingsPieCenterAmount').textContent =
+        formatCompactCurrency(total);
+ 
+      if (!breakdown.length || total <= 0) {
+        chart.style.background = 'conic-gradient(#CBD5E1 0 100%)';
+ 
+        legend.innerHTML =
+          '<p class="text-xs text-slate-400">Walang savings data para ma-display sa chart.</p>';
+ 
+        accountBreakdown.innerHTML =
+          '<p class="text-xs text-slate-400 py-3 text-center">Wala pang savings accounts.</p>';
+ 
+        document.getElementById('largestSavingsAccount').textContent = '\u2014';
+        return;
+      }
+ 
+      const gradientParts = [];
+      let cursor = 0;
+ 
+      breakdown.forEach((item, index) => {
+        const percentage = (item.amount / total) * 100;
+        const start = cursor;
+        const end = cursor + percentage;
+        const color = SAVINGS_CHART_COLORS[index % SAVINGS_CHART_COLORS.length];
+ 
+        gradientParts.push(`${color} ${start}% ${end}%`);
+        cursor = end;
+      });
+ 
+      chart.style.background = `conic-gradient(${gradientParts.join(', ')})`;
+ 
+      document.getElementById('largestSavingsAccount').textContent =
+        breakdown[0].account + ' \u2022 ' + formatCurrency(breakdown[0].amount);
+ 
+      legend.innerHTML = '';
+      accountBreakdown.innerHTML = '';
+ 
+      breakdown.forEach((item, index) => {
+        const percentage = (item.amount / total) * 100;
+        const color = SAVINGS_CHART_COLORS[index % SAVINGS_CHART_COLORS.length];
+ 
+        legend.innerHTML += `
+          <div class="savings-legend-row text-xs">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="savings-legend-dot" style="background:${color}"></span>
+              <span class="truncate text-slate-600 dark:text-slate-300">${escapeHtml(item.account)}</span>
+            </div>
+            <div class="text-right whitespace-nowrap">
+              <span class="font-bold text-slate-700 dark:text-slate-200">${formatCurrency(item.amount)}</span>
+              <span class="text-slate-400 ml-1">${percentage.toFixed(1)}%</span>
+            </div>
+          </div>
+        `;
+ 
+        accountBreakdown.innerHTML += `
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 min-w-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="savings-legend-dot" style="background:${color}"></span>
+                <span class="font-semibold text-sm truncate">${escapeHtml(item.account)}</span>
+              </div>
+              <span class="font-bold text-sm text-blue-600 dark:text-blue-400 whitespace-nowrap">${formatCurrency(item.amount)}</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span>${percentage.toFixed(1)}% of total savings</span>
+              <span>${index === 0 ? 'Largest account' : 'Savings account'}</span>
+            </div>
+            <div class="mt-2 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500" style="width:${Math.min(percentage, 100)}%; background:${color}"></div>
+            </div>
+          </div>
+        `;
+      });
+    }
+ 
+    function renderSavingsModalContents(preserveScroll = true) {
+      const container = document.getElementById('savingsListContainer');
+      const modal = document.getElementById('savingsModal');
+ 
+      if (!container || !modal) return;
+ 
+      const oldScrollTop = container.scrollTop;
+ 
+      renderSavingsPieChart(buildSavingsBreakdown());
+ 
+      const savingsTx =
+        (globalData.transactions || []).filter(t => t.type === 'savings');
+ 
+      container.innerHTML = '';
+ 
+      if (savingsTx.length === 0) {
+        container.innerHTML =
+          '<p class="text-xs text-slate-400 py-6 text-center">Walang pang naka-log na savings transactions.</p>';
+      } else {
+        [...savingsTx].reverse().forEach(s => {
+          const account = getSavingsAccountName(s);
+ 
+          container.innerHTML += `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm border border-slate-200 dark:border-slate-700">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="font-semibold truncate max-w-full">${escapeHtml(s.description)}</p>
+                  <span class="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-[10px] font-semibold">${escapeHtml(account)}</span>
+                </div>
+                <span class="text-xs text-slate-400">${escapeHtml(s.date)} \u00b7 ${escapeHtml(s.category)}</span>
+              </div>
+              <span class="font-bold text-blue-600 whitespace-nowrap sm:text-right">${formatCurrency(s.amount)}</span>
+            </div>
+          `;
+        });
+      }
+ 
+      if (preserveScroll) {
+        requestAnimationFrame(() => {
+          container.scrollTop = oldScrollTop;
+        });
+      }
+    }
+ 
+    function openSavingsModal() {
+      const modal = document.getElementById('savingsModal');
+ 
+      if (!modal) return;
+ 
+      renderSavingsModalContents(false);
       modal.classList.remove('hidden');
     }
-    function closeSavingsModal() { document.getElementById('savingsModal').classList.add('hidden'); }
-
+ 
+    function closeSavingsModal() {
+      document.getElementById('savingsModal').classList.add('hidden');
+    }
+ 
+    // ==========================================================
+    // DEBTS
+    // ==========================================================
     function openDebtsModal() {
       document.getElementById('debtModal').classList.remove('hidden');
       renderDebtList();
     }
-    function closeDebtsModal() { document.getElementById('debtModal').classList.add('hidden'); }
-
+ 
+    function closeDebtsModal() {
+      document.getElementById('debtModal').classList.add('hidden');
+    }
+ 
     function renderDebtList() {
-
-      const container =
-        document.getElementById(
-          'debtListContainer'
-        );
-
+      const container = document.getElementById('debtListContainer');
       container.innerHTML = '';
-
-      if (
-        !globalData.debts ||
-        globalData.debts.length === 0
-      ) {
-
-        container.innerHTML = `
-          <p class="text-xs text-slate-400">
-            Walang naka-log na utang o liabilities sa database.
-          </p>
+ 
+      if (!globalData.debts || globalData.debts.length === 0) {
+        container.innerHTML =
+          '<p class="text-xs text-slate-400">Walang naka-log na utang o liabilities sa database.</p>';
+        return;
+      }
+ 
+      globalData.debts.forEach(d => {
+        const initial = Number(d.initialAmount) || 0;
+        const remaining = Number(d.remainingAmount) || 0;
+ 
+        const progress =
+          initial > 0
+            ? Math.min(Math.max(((initial - remaining) / initial) * 100, 0), 100)
+            : 0;
+ 
+        const div = document.createElement('div');
+        div.className =
+          'bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2';
+ 
+        div.innerHTML = `
+          <div class="flex justify-between items-center text-sm font-semibold">
+            <span>${escapeHtml(d.creditor)}</span>
+            <span class="text-rose-500">${formatCurrency(remaining)} / ${formatCurrency(initial)}</span>
+          </div>
+          <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div class="bg-amber-500 h-full transition-all duration-500" style="width: ${progress}%"></div>
+          </div>
+          <div class="flex justify-between items-center pt-1 text-xs text-slate-400">
+            <span>Progress: ${Math.round(progress)}% paid</span>
+            ${
+              remaining > 0
+                ? `<button onclick="makePayment('${escapeJsString(d.id)}', ${remaining})" class="text-indigo-600 font-medium hover:underline">Magbayad</button>`
+                : '<span class="text-emerald-600 font-semibold">Paid</span>'
+            }
+          </div>
         `;
-
-        return;
-      }
-
-      globalData.debts.forEach(
-        d => {
-
-          const initial =
-            Number(
-              d.initialAmount
-            ) || 0;
-
-          const remaining =
-            Number(
-              d.remainingAmount
-            ) || 0;
-
-          const progress =
-            initial > 0
-              ? Math.min(
-                  Math.max(
-                    (
-                      (
-                        initial -
-                        remaining
-                      ) /
-                      initial
-                    ) * 100,
-                    0
-                  ),
-                  100
-                )
-              : 0;
-
-          const div =
-            document.createElement(
-              'div'
-            );
-
-          div.className =
-            "bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2";
-
-          div.innerHTML = `
-
-            <div class="flex justify-between items-center text-sm font-semibold">
-              <span>
-                ${escapeHtml(
-                  d.creditor
-                )}
-              </span>
-
-              <span class="text-rose-500">
-                ₱${remaining.toLocaleString(
-                  'en-US',
-                  {
-                    minimumFractionDigits: 2
-                  }
-                )}
-
-                /
-
-                ₱${initial.toLocaleString(
-                  'en-US',
-                  {
-                    minimumFractionDigits: 2
-                  }
-                )}
-              </span>
-            </div>
-
-            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-
-              <div
-                class="bg-amber-500 h-full transition-all duration-500"
-                style="width: ${progress}%"
-              ></div>
-
-            </div>
-
-            <div class="flex justify-between items-center pt-1 text-xs text-slate-400">
-
-              <span>
-                Progress:
-                ${Math.round(progress)}%
-                paid
-              </span>
-
-              ${
-                remaining > 0
-                  ? `
-                    <button
-                      onclick="makePayment('${escapeJsString(d.id)}', ${remaining})"
-                      class="text-indigo-600 font-medium hover:underline"
-                    >
-                      Magbayad
-                    </button>
-                  `
-                  : `
-                    <span class="text-emerald-600 font-semibold">
-                      Paid
-                    </span>
-                  `
-              }
-
-            </div>
-          `;
-
-          container.appendChild(
-            div
-          );
-        }
-      );
+ 
+        container.appendChild(div);
+      });
     }
-
+ 
     function handleDebtSubmit(e) {
-
       e.preventDefault();
-
+ 
       const debt = {
-        creditor:
-          document.getElementById(
-            'debtCreditor'
-          ).value.trim(),
-
-        amount:
-          document.getElementById(
-            'debtAmount'
-          ).value
+        creditor: document.getElementById('debtCreditor').value.trim(),
+        amount: document.getElementById('debtAmount').value
       };
-
-      if (
-        !debt.creditor ||
-        !debt.amount
-      ) {
+ 
+      if (!debt.creditor || !debt.amount) {
         return;
       }
-
+ 
       google.script.run
-
-        .withSuccessHandler(
-          res => {
-
-            if (
-              res &&
-              res.success === false
-            ) {
-
-              alert(
-                res.message ||
-                'Unable to add debt.'
-              );
-
-              return;
-            }
-
-            document.getElementById(
-              'debtCreditor'
-            ).value = '';
-
-            document.getElementById(
-              'debtAmount'
-            ).value = '';
-
-            
-            loadData(
-              () => {
-                openDebtsModal();
-              }
-            );
+        .withSuccessHandler(res => {
+          if (res && res.success === false) {
+            alert(res.message || 'Unable to add debt.');
+            return;
           }
-        )
-
-        .withFailureHandler(
-          err => {
-
-            alert(
-              'Error: ' +
-              (
-                err &&
-                err.message
-                  ? err.message
-                  : 'Unable to add debt.'
-              )
-            );
-          }
-        )
-
-        .addDebt(
-          debt
-        );
+ 
+          document.getElementById('debtCreditor').value = '';
+          document.getElementById('debtAmount').value = '';
+ 
+          notifyDataChanged();
+          loadData(() => { openDebtsModal(); }, { forceRender: true });
+        })
+        .withFailureHandler(err => {
+          alert('Error: ' + (err && err.message ? err.message : 'Unable to add debt.'));
+        })
+        .addDebt(debt);
     }
-
-    
-    
-    
-    function makePayment(
-      id,
-      currentRemaining
-    ) {
-
-      const payAmt =
-        prompt(
-          "Magkano ang ibinayad mo sa utang na ito?",
-          "1000"
-        );
-
-      if (
-        !payAmt ||
-        isNaN(payAmt)
-      ) {
+ 
+    function makePayment(id, currentRemaining) {
+      const payAmt = prompt('Magkano ang ibinayad mo sa utang na ito?', '1000');
+ 
+      if (!payAmt || isNaN(payAmt)) {
         return;
       }
-
-      const amount =
-        Number(payAmt);
-
-      if (
-        amount <= 0
-      ) {
-
+ 
+      const amount = Number(payAmt);
+ 
+      if (amount <= 0) {
+        alert('Please enter a valid payment amount.');
+        return;
+      }
+ 
+      if (amount > Number(currentRemaining)) {
         alert(
-          "Please enter a valid payment amount."
+          'Ang payment ay hindi puwedeng lumampas sa remaining debt na ' +
+          formatCurrency(currentRemaining)
         );
-
         return;
       }
-
-      if (
-        amount >
-        Number(currentRemaining)
-      ) {
-
-        alert(
-          "Ang payment ay hindi puwedeng lumampas sa remaining debt na ₱" +
-          Number(
-            currentRemaining
-          ).toLocaleString(
-            'en-US',
-            {
-              minimumFractionDigits: 2
-            }
-          )
-        );
-
-        return;
-      }
-
+ 
       google.script.run
-
-        .withSuccessHandler(
-          res => {
-
-            if (
-              !res ||
-              !res.success
-            ) {
-
-              alert(
-                (
-                  res &&
-                  res.message
-                ) ||
-                'Hindi na-process ang debt payment.'
-              );
-
-              return;
-            }
-
-            
-            
-            loadData(
-              () => {
-                openDebtsModal();
-              }
-            );
+        .withSuccessHandler(res => {
+          if (!res || !res.success) {
+            alert((res && res.message) || 'Hindi na-process ang debt payment.');
+            return;
           }
-        )
-
-        .withFailureHandler(
-          err => {
-
-            alert(
-              'Error: ' +
-              (
-                err &&
-                err.message
-                  ? err.message
-                  : 'Unable to process debt payment.'
-              )
-            );
-          }
-        )
-
-        .makeDebtPayment(
-          id,
-          amount
-        );
+ 
+          notifyDataChanged();
+          loadData(() => { openDebtsModal(); }, { forceRender: true });
+        })
+        .withFailureHandler(err => {
+          alert('Error: ' + (err && err.message ? err.message : 'Unable to process debt payment.'));
+        })
+        .makeDebtPayment(id, amount);
     }
-
+ 
+    // ==========================================================
+    // TRANSACTION FORM
+    // ==========================================================
     function handleFormSubmit(e) {
       e.preventDefault();
+ 
+      const transactionType = document.getElementById('txType').value;
+ 
       const tx = {
-        type: document.getElementById('txType').value,
-        description: document.getElementById('txDesc').value,
-        category: document.getElementById('txCategory').value,
+        type: transactionType,
+        description: document.getElementById('txDesc').value.trim(),
+        category: document.getElementById('txCategory').value.trim(),
         amount: document.getElementById('txAmount').value,
-        date: document.getElementById('txDate').value
+        date: document.getElementById('txDate').value,
+        cutoffKey: document.getElementById('txCutoffKey').value,
+        savingsAccount:
+          transactionType === 'savings' ? getSelectedSavingsAccount() : ''
       };
-      google.script.run.withSuccessHandler(() => {
-        closeModal();
-        document.getElementById('txForm').reset();
-        document.getElementById('txDate').valueAsDate = new Date();
-        loadData();
-      }).addTransaction(tx);
+ 
+      if (transactionType === 'savings' && !tx.savingsAccount) {
+        alert('Please select or enter the savings bank/account.');
+        return;
+      }
+ 
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res && res.success === false) {
+            alert(res.message || 'Unable to save transaction.');
+            return;
+          }
+ 
+          closeModal();
+          document.getElementById('txForm').reset();
+          document.getElementById('txDate').valueAsDate = new Date();
+          document.getElementById('txCutoffKey').value = '';
+          toggleSavingsAccountField();
+          refreshTxCutoffChoices();
+          previewTxCutoff();
+          notifyDataChanged();
+          loadData(null, { forceRender: true });
+        })
+        .withFailureHandler(err => {
+          alert('Error: ' + (err && err.message ? err.message : 'Unable to save transaction.'));
+        })
+        .addTransaction(tx);
     }
-
+ 
+    // ==========================================================
+    // I-REASSIGN ANG CUT-OFF NG EXISTING TRANSACTION
+    // ==========================================================
+    function reassignCutoff(id) {
+      const tx = (globalData.transactions || [])
+        .find(t => String(t.id) === String(id));
+ 
+      if (!tx) {
+        alert('Hindi mahanap ang transaction.');
+        return;
+      }
+ 
+      const choices = generateCutoffChoices();
+ 
+      let message =
+        'Saang cut-off ibabawas ang "' + tx.description + '" (' +
+        formatCurrency(tx.amount) + ')?\n\n' +
+        '0 = Auto (base sa Date: ' +
+        describeCutoff(getCutoffKeyFromDate(tx.date)).label + ')\n';
+ 
+      choices.forEach((key, index) => {
+        message += (index + 1) + ' = ' + describeCutoff(key).label + '\n';
+      });
+ 
+      message += '\nKasalukuyan: ' + describeCutoff(getCutoffKeyForTx(tx)).label;
+ 
+      const answer = prompt(message, '0');
+ 
+      if (answer === null) {
+        return;
+      }
+ 
+      const pick = Number(String(answer).trim());
+ 
+      if (!isFinite(pick) || pick < 0 || pick > choices.length) {
+        alert('Hindi valid ang pinili.');
+        return;
+      }
+ 
+      const newKey = pick === 0 ? '' : choices[pick - 1];
+ 
+      google.script.run
+        .withSuccessHandler(res => {
+          if (!res || res.success === false) {
+            alert((res && res.message) || 'Hindi na-update ang cut-off.');
+            return;
+          }
+ 
+          notifyDataChanged();
+          loadData(null, { forceRender: true });
+        })
+        .withFailureHandler(err => {
+          alert('Error: ' + (err && err.message ? err.message : 'Unable to update cut-off.'));
+        })
+        .updateTransactionCutoff(id, newKey);
+    }
+ 
     function deleteRow(id) {
-      if (!confirm("Burahin ang transaksyong ito?")) return;
-      google.script.run.withSuccessHandler(() => loadData()).deleteTransaction(id);
+      if (!confirm('Burahin ang transaksyong ito?')) return;
+ 
+      google.script.run
+        .withSuccessHandler(() => {
+          notifyDataChanged();
+          loadData(null, { forceRender: true });
+        })
+        .withFailureHandler(err => {
+          alert('Error: ' + (err && err.message ? err.message : 'Unable to delete transaction.'));
+        })
+        .deleteTransaction(id);
     }
-
-    function openModal() { document.getElementById('txModal').classList.remove('hidden'); }
-    function closeModal() { document.getElementById('txModal').classList.add('hidden'); }
-    function formatCurrency(n) { return '₱' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 }); }
+ 
+    function openModal() {
+      document.getElementById('txModal').classList.remove('hidden');
+      refreshTxCutoffChoices();
+      previewTxCutoff();
+    }
+ 
+    function closeModal() {
+      document.getElementById('txModal').classList.add('hidden');
+    }
+ 
+    // ==========================================================
+    // HELPERS
+    // ==========================================================
+    function formatCurrency(n) {
+      return '\u20b1' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+    }
+ 
+    function formatCompactCurrency(n) {
+      const value = Number(n || 0);
+ 
+      if (value >= 1000000) return '\u20b1' + (value / 1000000).toFixed(1) + 'M';
+      if (value >= 1000) return '\u20b1' + (value / 1000).toFixed(1) + 'K';
+ 
+      return formatCurrency(value);
+    }
+ 
     function toggleDarkMode() {
       document.documentElement.classList.toggle('dark');
-      document.getElementById('themeIcon').className = document.documentElement.classList.contains('dark') ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+ 
+      document.getElementById('themeIcon').className =
+        document.documentElement.classList.contains('dark')
+          ? 'fa-solid fa-sun'
+          : 'fa-solid fa-moon';
     }
+ 
     function escapeHtml(str) {
-      return String(
-        str == null
-          ? ''
-          : str
-      )
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
-
+ 
     function escapeJsString(str) {
-      return String(
-        str == null
-          ? ''
-          : str
-      )
-        .replace(/\\/g, "\\\\")
+      return String(str == null ? '' : str)
+        .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'")
-        .replace(/\n/g, "\\n")
-        .replace(/\r/g, "\\r");
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
     }
-
+ 
     function formatAiText(text) {
-      return escapeHtml(
-        text
-      ).replace(
-        /\n/g,
-        '<br>'
-      );
+      return escapeHtml(text).replace(/\n/g, '<br>');
     }
   </script>
 </body>
